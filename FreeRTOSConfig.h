@@ -43,7 +43,7 @@
 __persistent keyword to be used.  See http://www.freertos.org/a00111.html#heap_4 */
 #define configUSE_PREEMPTION					1
 #define configMAX_PRIORITIES					( 5 )
-#define configCPU_CLOCK_HZ						( 8000000 )
+#define configCPU_CLOCK_HZ						( 16000000 )
 #define configTICK_RATE_HZ						( 1000 ) /* In this non-real time simulated environment the tick frequency has to be at least a multiple of the Win32 tick frequency, and therefore very slow. */
 #define configTOTAL_HEAP_SIZE					( 2 * 1024 )
 #define configMAX_TASK_NAME_LEN					( 15 )

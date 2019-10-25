@@ -2,7 +2,7 @@
 <link_info>
    <banner>MSP430 Linker Unix v18.12.3.LTS</banner>
    <copyright>Copyright (c) 2003-2018 Texas Instruments Incorporated</copyright>
-   <link_time>0x5d9bea80</link_time>
+   <link_time>0x5d9bf40d</link_time>
    <link_errors>0x0</link_errors>
    <output_file>Blink.out</output_file>
    <entry_point>

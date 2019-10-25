@@ -14,4 +14,5 @@
 	<templateProperties value="id=com.ti.ccstudio.project.templates.blink_msp430"/>
 	<filesToOpen value="blink.c"/>
 	<isTargetManual value="false"/>
+	<origin value="C:/Users/SamH/workspace_v9/blink_freertos_msp430fr2476"/>
 </projectOptions>

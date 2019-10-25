@@ -114,5 +114,6 @@ SUBDIRS := \
 . \
 FreeRTOS \
 FreeRTOS/portable \
+Ublox_GPS \
 driverlib/MSP430FR2xx_4xx \
 
