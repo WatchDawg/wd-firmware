@@ -15,22 +15,22 @@ uint8_t mag_readReg(uint8_t addr) {
     GPIO_setOutputLowOnPin(SPI_CS_PORT, SPI_CS_PIN);
     EUSCI_B_SPI_transmitData(SPI_BASE_ADDR, addr);
     while(EUSCI_B_SPI_isBusy(SPI_BASE_ADDR) == EUSCI_B_SPI_BUSY);
-    while(!(INTERRUPT_FLAG_REG&UCRXIFG0));
+    //while(!(INTERRUPT_FLAG_REG&UCRXIFG0));
     data = EUSCI_B_SPI_receiveData(SPI_BASE_ADDR);
     EUSCI_B_SPI_transmitData(SPI_BASE_ADDR, SPI_READ_MASK);
     while(EUSCI_B_SPI_isBusy(SPI_BASE_ADDR) == EUSCI_B_SPI_BUSY);
-    while(!(INTERRUPT_FLAG_REG&UCRXIFG0));
+    //while(!(INTERRUPT_FLAG_REG&UCRXIFG0));
     data = EUSCI_B_SPI_receiveData(SPI_BASE_ADDR);
     GPIO_setOutputHighOnPin(SPI_CS_PORT, SPI_CS_PIN);
     return data;
 }
 
 int16_t mag_readAxis(uint8_t axis) {
-    uint8_t requestDataLow = SPI_READ_MASK | 0x28;
-    uint8_t requestDataHigh = SPI_READ_MASK | 0x29;
-    uint8_t receiveDataLow = 0;
-    uint8_t receiveDataHigh = 0;
-    int16_t data = 0x0000;
+    volatile uint8_t requestDataLow = SPI_READ_MASK | 0x28;
+    volatile uint8_t requestDataHigh = SPI_READ_MASK | 0x29;
+    volatile uint8_t receiveDataLow = 0;
+    volatile uint8_t receiveDataHigh = 0;
+    volatile int16_t data = 0x0000;
 
     switch(axis) {
         case 'x':
@@ -65,14 +65,16 @@ void mag_setSingleShotMode() {
 void mag_calibrationStep() {
     int16_t x = mag_readAxis('x');
     int16_t y = mag_readAxis('y');
-
     mag_setSingleShotMode();
+
+    volatile unsigned i = 0;
+    for(i = 0; i < 8000; ++i) { }
 
     if(x > calData.maxX) calData.maxX = x;
     if(x < calData.minX) calData.minX = x;
 
     if(y > calData.maxY) calData.maxY = y;
-    if(y < calData.minY) calData.minY = y;	
+    if(y < calData.minY) calData.minY = y;
 }
 
 void mag_exitCalibration() {
@@ -92,7 +94,7 @@ void mag_calibrate() {
     calData.maxY = -2048;
     calData.minY = 0;
     uint32_t i = 0;
-    while(i < 80000) {
+    while(i < 4000) {
         mag_calibrationStep();
         ++i;
     }
@@ -161,14 +163,16 @@ void mag_init() {
 }
 
 int16_t mag_getHeading() {
-    int16_t corrected = 0;
-	int16_t x = mag_readAxis('x');
-	int16_t y = mag_readAxis('y');
-
+    volatile int16_t corrected = 0;
+    volatile int16_t x = mag_readAxis('x');
+    volatile int16_t y = mag_readAxis('y');
     mag_setSingleShotMode();
 
-    int16_t x_corrected = (x-calData.offsetX)/calData.scaleX;
-    int16_t y_corrected = (y-calData.offsetY)/calData.scaleY;
+    volatile unsigned i = 0;
+    for(i = 0; i < 8000; ++i) { }
+
+    volatile int16_t x_corrected = (x-calData.offsetX)/calData.scaleX;
+    volatile int16_t y_corrected = (y-calData.offsetY)/calData.scaleY;
 
     corrected = 180 * ((_IQ12toF(_IQ12atan2(_IQ12(y_corrected),_IQ12(x_corrected))))/M_PI);
     if(corrected < 0) {

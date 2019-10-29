@@ -1,5 +1,8 @@
+#include "FreeRTOSConfig.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
+#include "semphr.h"
 
 #include "driverlib.h"
 
@@ -7,6 +10,8 @@
 
 #include "magnetometer.h"
 #include "magnetometer.c"
+
+SemaphoreHandle_t xSemaphore;
 
 #ifdef __cplusplus
 extern "C"{
@@ -77,69 +82,148 @@ static void prvSetupHardware( void ) {
     PMM_unlockLPM5();
 }
 
-SFE_UBLOX_GPS myGPS;
-
-long latitude;
-long longitude;
-long altitude;
-uint8_t SIV;
-
-uint16_t protocolVersion;
-volatile uint8_t pVH = 0, pVL = 0;
-
-
 void printStr(char* str) {
     while (*str) {
         Serial.write(*str++);
     }
 }
 
-void taskGPSInterface(void* pvParameters) {
-    Serial.begin(9600);
-    Serial1.begin(9600);
-    while (!myGPS.begin(Serial1)) {
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
-    //configASSERT(myGPS.setUART1Output(COM_TYPE_UBX)); //Set the UART port to output UBX only
-    //configASSERT(myGPS.saveConfiguration()); //Save the current settings to flash and BBR
-    pVL = myGPS.getProtocolVersionLow();
-    vTaskDelay(pdMS_TO_TICKS(100));
-    pVH = myGPS.getProtocolVersionHigh();
-    vTaskDelay(pdMS_TO_TICKS(100));
-    protocolVersion = (pVL & 0x00FF) | (pVH & 0xFF) << 8;
-    for (;;) {
-        latitude = myGPS.getLatitude();
-        longitude = myGPS.getLongitude();
-        altitude = myGPS.getAltitude();
-        SIV = myGPS.getSIV();
+//void taskGPSInterface(void* pvParameters) {
+//    //Serial.begin(9600);
+//    //Serial1.begin(9600);
+//    while (!myGPS.begin(Serial1)) {
+//        vTaskDelay(pdMS_TO_TICKS(100));
+//    }
+//    //configASSERT(myGPS.setUART1Output(COM_TYPE_UBX)); //Set the UART port to output UBX only
+//    //configASSERT(myGPS.saveConfiguration()); //Save the current settings to flash and BBR
+//    pVL = myGPS.getProtocolVersionLow();
+//    vTaskDelay(pdMS_TO_TICKS(100));
+//    pVH = myGPS.getProtocolVersionHigh();
+//    vTaskDelay(pdMS_TO_TICKS(100));
+//    protocolVersion = (pVL & 0x00FF) | (pVH & 0xFF) << 8;
+//    for (;;) {
+//        latitude = myGPS.getLatitude();
+//        longitude = myGPS.getLongitude();
+//        altitude = myGPS.getAltitude();
+//        SIV = myGPS.getSIV();
+//        char tmpStr[] = "GPS COLLECTED\r\n";
+//        printStr(tmpStr);
+//    }
+//}
+//
+//void taskMag(void* pvParameters) {
+//    //Serial.begin(9600);
+//    volatile int16_t corrected = 0;
+//    for(;;) {
+//        corrected = mag_getHeading();
+//        char strCorrected[8];
+//        itoa((int)corrected, strCorrected, 10);
+//        printStr(strCorrected);
+//        char tmp[] = "\r";
+//        printStr(tmp);
+//        char tmp2[] = "\n";
+//        printStr(tmp2);
+//    }
+//}
+
+void taskPeriodic(void* pvParameters) {
+    for(;;) {
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        xSemaphoreGive(xSemaphore);
     }
 }
 
-void taskMag(void* pvParameters) {
-    Serial.begin(9600);
-    volatile int16_t corrected = 0;
+SFE_UBLOX_GPS myGPS;
+
+long latitude, longitude, altitude;
+//uint8_t SIV;
+//uint16_t protocolVersion;
+//volatile uint8_t pVH = 0, pVL = 0;
+
+void taskActive(void* pvParameters) {
+    while (!myGPS.begin(Serial1)) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
     for(;;) {
-        corrected = mag_getHeading();
-        char strCorrected[8];
-        itoa((int)corrected, strCorrected, 10);
-        printStr(strCorrected);
-        char tmp[] = "\r";
-        printStr(tmp);
-        char tmp2[] = "\n";
-        printStr(tmp2);
+        if(xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE ) {
+
+            char tmpStr[] = "RUNNING TASK\r\n";
+            printStr(tmpStr);
+
+            volatile int16_t corrected = 0;
+            corrected = mag_getHeading();
+
+            char strCorrected[8];
+            itoa((int)corrected, strCorrected, 10);
+            printStr(strCorrected);
+            char crlf[] = "\r\n";
+            printStr(crlf);
+
+            latitude = myGPS.getLatitude();
+            longitude = myGPS.getLongitude();
+            altitude = myGPS.getAltitudeMSL();
+
+            char strLat[32];
+            itoa((long int)latitude, strLat, 10);
+            printStr(strLat);
+            printStr(crlf);
+        }
+
     }
 }
+
+void taskInit(void* pvParameters) {
+    mag_init();
+
+    Serial.begin(9600);
+    Serial1.begin(9600);
+
+    xSemaphore = xSemaphoreCreateBinary();
+    if(xSemaphore == NULL) {
+        while(1) {
+            //spin;
+        }
+    }
+
+    /* FOR BREADBOARD BUTTON TEST */
+    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);
+    GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+    GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+    GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
+
+    xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    vTaskSuspend(NULL);
+}
+
 
 void main(void) {
     // Setup hardware
     prvSetupHardware();
 
-    mag_init();
+    xTaskCreate(taskInit, "taskInit", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
-    //Create light-blinking task
-    //xTaskCreate(taskGPSInterface, "taskGPSInterface", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-    xTaskCreate(taskMag, "taskMag", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    // enable global interrupts
+    __enable_interrupt();
 
     // Start FreeRTOS scheduler
     vTaskStartScheduler();
 }
+
+//******************************************************************************
+//
+//This is the PORT1_VECTOR interrupt vector service routine
+//
+//******************************************************************************
+#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#pragma vector=PORT1_VECTOR
+__interrupt
+#elif defined(__GNUC__)
+__attribute__((interrupt(PORT1_VECTOR)))
+#endif
+void P1_ISR (void) {
+    xSemaphoreGiveFromISR(xSemaphore, NULL);
+    GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+}
+
