@@ -1875,3 +1875,17 @@ bool SFE_UBLOX_GPS::getRELPOSNED(uint16_t maxWait)
 
   return (true);
 }
+
+bool SFE_UBLOX_GPS::setInactive(uint16_t maxWait) {
+    // Power-off
+    packetCfg.cls = UBX_CLASS_RXM;
+    packetCfg.id = 0x41;
+    packetCfg.len = 8;
+    packetCfg.startingSpot = 0;
+    for (uint16_t x = 0; x < MAX_PAYLOAD_SIZE; x++)
+        packetCfg.payload[x] = 0;
+    // Duration set to 0 for infinite duration
+    packetCfg.payload[4] = 0x02;
+
+    return (sendCommand(packetCfg, maxWait));
+}

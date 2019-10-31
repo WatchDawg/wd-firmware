@@ -269,6 +269,8 @@ public:
 
 	bool getRELPOSNED(uint16_t maxWait = 1000); //Get Relative Positioning Information of the NED frame
 
+	bool setInactive(uint16_t maxWait = 1000); //Sets the GPS to Inactive (Hardware Backup) mode
+
 //	void enableDebugging(HardwareSerial &debugPort); //Given a port to print to, enable debug messages
 //	void disableDebugging(void);					  //Turn off debug statements
 //	void debugPrint(char *message);					  //Safely print debug statements
