@@ -41,6 +41,7 @@
 #include "HardwareSerial.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 
 #define UCAzCTLW0     UCA0CTLW0 
 #define UCAzCTL0      UCA0CTL0
@@ -333,6 +334,8 @@ HardwareSerial::operator bool() {
 	return true;
 }
 
+extern SemaphoreHandle_t xReceiveSemaphore;
+
 void uart_rx_isr(uint16_t offset)
 {
 #ifdef SERIAL1_AVAILABLE
@@ -343,6 +346,14 @@ void uart_rx_isr(uint16_t offset)
 #endif
 	unsigned char c = *(&(UCAzRXBUF) + offset);
 	store_char(c, rx_buffer_ptr);
+
+
+
+	if(offset == DEBUG_UART_MODULE_OFFSET) {
+        if(c == 0x53) {
+            xSemaphoreGiveFromISR(xReceiveSemaphore, NULL);
+        }
+	}
 }
 
 void uart_tx_isr(uint16_t offset)

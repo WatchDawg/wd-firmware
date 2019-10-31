@@ -67,6 +67,7 @@ void mag_calibrationStep() {
     int16_t y = mag_readAxis('y');
     mag_setSingleShotMode();
 
+    // TODO: find better way of doing this
     volatile unsigned i = 0;
     for(i = 0; i < 8000; ++i) { }
 
@@ -103,7 +104,7 @@ void mag_calibrate() {
 
 void mag_initMag() {
 	//mag_writeReg(0x20, 0x7C);
-    mag_writeReg(0x20, 0x00);
+    mag_writeReg(0x20, 0x80); // sets temp bit
 	mag_writeReg(0x21, 0x00);
 	mag_writeReg(0x22, 0x01);
 	mag_writeReg(0x23, 0x0C);
@@ -168,8 +169,9 @@ int16_t mag_getHeading() {
     volatile int16_t y = mag_readAxis('y');
     mag_setSingleShotMode();
 
-    volatile unsigned i = 0;
-    for(i = 0; i < 8000; ++i) { }
+    // this delay isnt necessary when using the watchdawg normally
+//    volatile unsigned i = 0;
+//    for(i = 0; i < 8000; ++i) { }
 
     volatile int16_t x_corrected = (x-calData.offsetX)/calData.scaleX;
     volatile int16_t y_corrected = (y-calData.offsetY)/calData.scaleY;
@@ -179,6 +181,21 @@ int16_t mag_getHeading() {
         corrected += 360;
     }
     return corrected;
+}
+
+int16_t mag_getTemp() {
+    volatile int16_t temp;
+    volatile uint8_t receiveDataLow = 0;
+    volatile uint8_t receiveDataHigh = 0;
+
+    // GET LOW BITS
+    receiveDataLow = mag_readReg(SPI_READ_MASK | TEMP_OUT_L);
+
+    // GET HIGH BITS
+    receiveDataHigh = mag_readReg(SPI_READ_MASK | TEMP_OUT_H);
+
+    temp = ((int16_t)((uint16_t)(receiveDataHigh << 8) | receiveDataLow));
+    return temp/8; // spec says 8 LSB/ deg C
 }
 
 /* apparently itoa is not a standard C function

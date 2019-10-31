@@ -77,6 +77,9 @@ typedef enum {
   OUT_Z_L     = 0x2C,
   OUT_Z_H     = 0x2D,
   
+  TEMP_OUT_L  = 0x2E,
+  TEMP_OUT_H  = 0x2F,
+
   INT_CFG     = 0x30,
   INT_SRC     = 0x31,
   INT_THS_L   = 0x32,
@@ -96,6 +99,7 @@ void mag_initMag();
 void mag_initSPI();
 void mag_init();
 int16_t mag_getHeading();
+int16_t mag_getTemp();
 
 /* apparently itoa is not a standard C function
 and thus there is no port for the MSP430 */

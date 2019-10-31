@@ -11,7 +11,12 @@
 #include "magnetometer.h"
 #include "magnetometer.c"
 
-SemaphoreHandle_t xSemaphore;
+#define PROGRAM_MSG_START 0x53 // 'S'
+#define PROGRAM_MSG_STOP 0xFFFFFFFF
+#define PROGRAM_MSP_ACK 0x41 // 'A'
+
+SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
+SemaphoreHandle_t xReceiveSemaphore; // used to signal when to start receiving/storing user's coordinate list
 
 #ifdef __cplusplus
 extern "C"{
@@ -88,48 +93,10 @@ void printStr(char* str) {
     }
 }
 
-//void taskGPSInterface(void* pvParameters) {
-//    //Serial.begin(9600);
-//    //Serial1.begin(9600);
-//    while (!myGPS.begin(Serial1)) {
-//        vTaskDelay(pdMS_TO_TICKS(100));
-//    }
-//    //configASSERT(myGPS.setUART1Output(COM_TYPE_UBX)); //Set the UART port to output UBX only
-//    //configASSERT(myGPS.saveConfiguration()); //Save the current settings to flash and BBR
-//    pVL = myGPS.getProtocolVersionLow();
-//    vTaskDelay(pdMS_TO_TICKS(100));
-//    pVH = myGPS.getProtocolVersionHigh();
-//    vTaskDelay(pdMS_TO_TICKS(100));
-//    protocolVersion = (pVL & 0x00FF) | (pVH & 0xFF) << 8;
-//    for (;;) {
-//        latitude = myGPS.getLatitude();
-//        longitude = myGPS.getLongitude();
-//        altitude = myGPS.getAltitude();
-//        SIV = myGPS.getSIV();
-//        char tmpStr[] = "GPS COLLECTED\r\n";
-//        printStr(tmpStr);
-//    }
-//}
-//
-//void taskMag(void* pvParameters) {
-//    //Serial.begin(9600);
-//    volatile int16_t corrected = 0;
-//    for(;;) {
-//        corrected = mag_getHeading();
-//        char strCorrected[8];
-//        itoa((int)corrected, strCorrected, 10);
-//        printStr(strCorrected);
-//        char tmp[] = "\r";
-//        printStr(tmp);
-//        char tmp2[] = "\n";
-//        printStr(tmp2);
-//    }
-//}
-
 void taskPeriodic(void* pvParameters) {
     for(;;) {
         vTaskDelay(pdMS_TO_TICKS(5000));
-        xSemaphoreGive(xSemaphore);
+        xSemaphoreGive(xActiveSemaphore);
     }
 }
 
@@ -146,13 +113,15 @@ void taskActive(void* pvParameters) {
     }
 
     for(;;) {
-        if(xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE ) {
+        if(xSemaphoreTake( xActiveSemaphore, ( TickType_t ) 10 ) == pdTRUE ) {
 
             char tmpStr[] = "RUNNING TASK\r\n";
             printStr(tmpStr);
 
             volatile int16_t corrected = 0;
             corrected = mag_getHeading();
+
+            volatile int16_t temp = mag_getTemp();
 
             char strCorrected[8];
             itoa((int)corrected, strCorrected, 10);
@@ -173,27 +142,71 @@ void taskActive(void* pvParameters) {
     }
 }
 
+void taskReceiveData(void* pvParameters) {
+    for(;;) {
+        if(xSemaphoreTake( xReceiveSemaphore, ( TickType_t ) 10 ) == pdTRUE) {
+
+            while(Serial.available() != 0) {
+                Serial.read();
+            }
+
+            // receive buffer is now empty
+
+            volatile int32_t receivedLatitude = 0;
+            volatile int32_t receivedLongitude = 0;
+            while(1) {
+                Serial.write(PROGRAM_MSP_ACK);
+                while(Serial.available() < 4);
+                receivedLatitude = Serial.read();
+                receivedLatitude <<= 8;
+                receivedLatitude |= Serial.read();
+                receivedLatitude <<= 8;
+                receivedLatitude |= Serial.read();
+                receivedLatitude <<= 8;
+                receivedLatitude |= Serial.read();
+
+                Serial.write(PROGRAM_MSP_ACK);
+                while(Serial.available() < 4);
+                receivedLongitude = Serial.read();
+                receivedLongitude <<= 8;
+                receivedLongitude |= Serial.read();
+                receivedLongitude <<= 8;
+                receivedLongitude |= Serial.read();
+                receivedLongitude <<= 8;
+                receivedLongitude |= Serial.read();
+            }
+        }
+    }
+}
+
 void taskInit(void* pvParameters) {
-    mag_init();
+    //mag_init();
 
     Serial.begin(9600);
-    Serial1.begin(9600);
+    //Serial1.begin(9600);
 
-    xSemaphore = xSemaphoreCreateBinary();
-    if(xSemaphore == NULL) {
+    xActiveSemaphore = xSemaphoreCreateBinary();
+    xReceiveSemaphore = xSemaphoreCreateBinary();
+    if(xActiveSemaphore == NULL || xReceiveSemaphore == NULL) {
         while(1) {
             //spin;
         }
     }
 
-    /* FOR BREADBOARD BUTTON TEST */
-    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);
-    GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
-    GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
-    GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
+    xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
-    xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    for(;;) {
+
+    }
+//
+//    /* FOR BREADBOARD BUTTON TEST */
+//    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);
+//    GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+//    GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+//    GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
+//
+//    xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+//    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
     vTaskSuspend(NULL);
 }
 
@@ -223,7 +236,6 @@ __interrupt
 __attribute__((interrupt(PORT1_VECTOR)))
 #endif
 void P1_ISR (void) {
-    xSemaphoreGiveFromISR(xSemaphore, NULL);
+    xSemaphoreGiveFromISR(xActiveSemaphore, NULL);
     GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
 }
-
