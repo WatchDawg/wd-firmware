@@ -129,9 +129,16 @@ void taskActive(void* pvParameters) {
             char crlf[] = "\r\n";
             printStr(crlf);
 
+            // Loop until GPS is awakened
+            while (!myGPS.getPVT()) {
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
             latitude = myGPS.getLatitude();
             longitude = myGPS.getLongitude();
             altitude = myGPS.getAltitudeMSL();
+            while (!myGPS.setInactive()) {
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
 
             char strLat[32];
             itoa((long int)latitude, strLat, 10);
