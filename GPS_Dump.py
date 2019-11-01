@@ -12,9 +12,9 @@ with open('coords.txt', newline='') as csvfile:
     ser.reset_input_buffer()
     ser.reset_output_buffer()
 
-    h = 0x53
+    h = 0xFE
     ser.write(struct.pack('>B', h))
-    #time.sleep(.1)
+    time.sleep(.1)
     #ser.flush()
 ##    ser.write((h).to_bytes(1, byteorder="big", signed=True))
 ##    print((180000).to_bytes(8, byteorder="big", signed=True))
@@ -40,7 +40,7 @@ with open('coords.txt', newline='') as csvfile:
 ##        ser.write((long).to_bytes(4, byteorder="big", signed=True))
     csvfile.close()
 
-    h = 0x45
+    h = 0xFF
     ser.write(struct.pack('>B', h))
 
 ser.close()

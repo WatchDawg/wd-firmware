@@ -67,6 +67,8 @@
 #define SERIAL_8O2      (0      | UCPEN         | UCSPB)
 #endif
 
+#define PROGRAM_MSG_START 0xFE
+
 struct ring_buffer;
 
 class HardwareSerial

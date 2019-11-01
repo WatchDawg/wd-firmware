@@ -350,7 +350,7 @@ void uart_rx_isr(uint16_t offset)
 
 
 	if(offset == DEBUG_UART_MODULE_OFFSET) {
-        if(c == 0x53) {
+        if(c == PROGRAM_MSG_START) {
             xSemaphoreGiveFromISR(xReceiveSemaphore, NULL);
         }
 	}

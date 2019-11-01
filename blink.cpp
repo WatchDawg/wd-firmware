@@ -11,8 +11,7 @@
 #include "magnetometer.h"
 #include "magnetometer.c"
 
-#define PROGRAM_MSG_START 0x53 // 'S'
-#define PROGRAM_MSG_STOP 0xFFFFFFFF
+#define PROGRAM_MSG_STOP 0xFF
 #define PROGRAM_MSP_ACK 0x41 // 'A'
 
 SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
@@ -170,7 +169,7 @@ void taskReceiveData(void* pvParameters) {
                 // Receive 1 byte (could be stop byte)
                 while(Serial.available() == 0);
                 receivedLatitude = Serial.read();
-                if (receivedLatitude == 0x45) {
+                if (receivedLatitude == PROGRAM_MSG_STOP) {
                     // Stop byte received
                     break;
                 }
