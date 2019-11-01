@@ -131,16 +131,13 @@ void taskActive(void* pvParameters) {
             char crlf[] = "\r\n";
             printStr(crlf);
 
-            // Loop until GPS is awakened
-            while (!myGPS.getPVT()) {
-                vTaskDelay(pdMS_TO_TICKS(100));
-            }
-            latitude = myGPS.getLatitude();
-            longitude = myGPS.getLongitude();
-            altitude = myGPS.getAltitudeMSL();
-            while (!myGPS.setInactive()) {
-                vTaskDelay(pdMS_TO_TICKS(100));
-            }
+            // Wake up GPS by sending a UART message
+            // Loop until we get a nonzero value for each measurement
+            while(!(latitude = myGPS.getLatitude()));
+            while(!(longitude = myGPS.getLongitude()));
+            while(!(altitude = myGPS.getAltitudeMSL()));
+            // Put GPS into inactive mode until we communicate with it again
+            myGPS.setInactive();
 
             char strLat[32];
             itoa((long int)latitude, strLat, 10);
