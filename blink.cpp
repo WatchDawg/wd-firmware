@@ -17,6 +17,9 @@
 SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
 SemaphoreHandle_t xReceiveSemaphore; // used to signal when to start receiving/storing user's coordinate list
 
+// [0] = number of coordinates, [1...256] = data
+int32_t coords[257] = {3, 422923200, -837135440, 422923200, -837149320, 422911760, -837159110};
+
 #ifdef __cplusplus
 extern "C"{
 #endif
@@ -162,6 +165,11 @@ void taskReceiveData(void* pvParameters) {
 
             // receive buffer is now empty
 
+            // Reset number of coordinates
+            coords[0] = 0;
+            // Write pointer for coordinates array
+            int32_t* coord_ptr = coords + 1;
+
             volatile int32_t receivedLatitude = 0;
             volatile int32_t receivedLongitude = 0;
             while(1) {
@@ -181,6 +189,7 @@ void taskReceiveData(void* pvParameters) {
                 receivedLatitude |= Serial.read();
                 receivedLatitude <<= 8;
                 receivedLatitude |= Serial.read();
+                *(coord_ptr++) = receivedLatitude;
 
                 Serial.write(PROGRAM_MSP_ACK);
                 while(Serial.available() < 4);
@@ -191,6 +200,9 @@ void taskReceiveData(void* pvParameters) {
                 receivedLongitude |= Serial.read();
                 receivedLongitude <<= 8;
                 receivedLongitude |= Serial.read();
+                *(coord_ptr++) = receivedLongitude;
+
+                coords[0]++;
             }
 
             while(!(xSemaphoreTake( xReceiveSemaphore, ( TickType_t ) 10 ) == pdTRUE));
