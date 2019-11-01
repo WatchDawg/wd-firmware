@@ -152,6 +152,10 @@ void taskActive(void* pvParameters) {
 void taskReceiveData(void* pvParameters) {
     for(;;) {
         if(xSemaphoreTake( xReceiveSemaphore, ( TickType_t ) 10 ) == pdTRUE) {
+            // By giving to the semaphore,
+            //   we can down it at the end of processing to ensure that
+            //   no extra count will carry over from reception of coordinates
+            xSemaphoreGive(xReceiveSemaphore);
 
             while(Serial.available() != 0) {
                 Serial.read();
@@ -163,9 +167,16 @@ void taskReceiveData(void* pvParameters) {
             volatile int32_t receivedLongitude = 0;
             while(1) {
                 Serial.write(PROGRAM_MSP_ACK);
-                while(Serial.available() < 4);
+                // Receive 1 byte (could be stop byte)
+                while(Serial.available() == 0);
                 receivedLatitude = Serial.read();
+                if (receivedLatitude == 0x45) {
+                    // Stop byte received
+                    break;
+                }
                 receivedLatitude <<= 8;
+                // If stop byte was not received, receive other 3 bytes of latitude
+                while(Serial.available() < 3);
                 receivedLatitude |= Serial.read();
                 receivedLatitude <<= 8;
                 receivedLatitude |= Serial.read();
@@ -182,6 +193,8 @@ void taskReceiveData(void* pvParameters) {
                 receivedLongitude <<= 8;
                 receivedLongitude |= Serial.read();
             }
+
+            while(!(xSemaphoreTake( xReceiveSemaphore, ( TickType_t ) 10 ) == pdTRUE));
         }
     }
 }
@@ -202,9 +215,6 @@ void taskInit(void* pvParameters) {
 
     xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
-    for(;;) {
-
-    }
 //
 //    /* FOR BREADBOARD BUTTON TEST */
 //    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);

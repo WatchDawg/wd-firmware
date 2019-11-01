@@ -41,6 +41,6 @@ with open('coords.txt', newline='') as csvfile:
     csvfile.close()
 
     h = 0x45
-    ser.write((h).to_bytes(1, byteorder="big", signed=True))
+    ser.write(struct.pack('>B', h))
 
 ser.close()
