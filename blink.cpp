@@ -29,6 +29,11 @@ int32_t coords[256] = {422925750, -837166570};
 int32_t* target_coord_ptr = coords;
 int32_t* end_coord_ptr = coords + 2;
 
+long double distance = 0;
+int32_t gps_heading = 0;
+int32_t mag_heading = 0;
+int32_t dir_heading = 0;
+
 #ifdef __cplusplus
 extern "C"{
 #endif
@@ -160,17 +165,21 @@ void updateTargetCoord(int32_t latitude, int32_t longitude) {
     long double x = targetLat - currLat;
     long double y = targetLong - currLong * cosl(currLat * (M_PI / 180));
     //long double y = (targetLong - currLong) * taylorCos(2, currLat * (M_PI / 180));
-    long double dist = degLen * sqrtl(x*x + y*y);
+    distance = degLen * sqrtl(x*x + y*y) * 1000;
 
-    if (dist < TARGET_COORD_THRESHOLD) {
+    if (distance < TARGET_COORD_THRESHOLD) {
         target_coord_ptr += 2;
         if (target_coord_ptr == end_coord_ptr) {
             target_coord_ptr = NULL;
         }
+        updateTargetCoord(latitude, longitude);
     }
 
-    volatile long double test = atan2l((targetLat - currLat), (targetLong - currLong)) * (180 / M_PI);
-    (void)test;
+    long double heading = atan2l((targetLat - currLat), (targetLong - currLong)) * (180.0 / M_PI);
+    gps_heading = 90 - (heading + 0.5);
+    if (gps_heading < 0) {
+        gps_heading = 360 + gps_heading;
+    }
 }
 
 void taskActive(void* pvParameters) {
@@ -207,6 +216,13 @@ void taskActive(void* pvParameters) {
             itoa((long int)latitude, strLat, 10);
             printStr(strLat);
             printStr(crlf);
+
+            updateTargetCoord(latitude, longitude);
+
+            dir_heading = gps_heading - mag_heading;
+            if (dir_heading < 0) {
+                dir_heading += 360;
+            }
         }
 
     }
@@ -287,9 +303,7 @@ void taskInit(void* pvParameters) {
         }
     }
 
-    updateTargetCoord(422925670, -837149970);
-
-    for(;;);
+    //updateTargetCoord(422925670, -837149970);
 
     xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
@@ -301,7 +315,7 @@ void taskInit(void* pvParameters) {
 //    GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
 //
 //    xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-//    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+//    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE * 2, NULL, 2, NULL);
     vTaskSuspend(NULL);
 }
 
@@ -310,7 +324,7 @@ void main(void) {
     // Setup hardware
     prvSetupHardware();
 
-    xTaskCreate(taskInit, "taskInit", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL);
+    xTaskCreate(taskInit, "taskInit", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
     // enable global interrupts
     __enable_interrupt();
