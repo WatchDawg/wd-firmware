@@ -11,14 +11,23 @@
 #include "magnetometer.h"
 #include "magnetometer.c"
 
+#include <math.h>
+
 #define PROGRAM_MSG_STOP 0xFF
 #define PROGRAM_MSP_ACK 0x41 // 'A'
+
+#define TARGET_COORD_THRESHOLD 10
 
 SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
 SemaphoreHandle_t xReceiveSemaphore; // used to signal when to start receiving/storing user's coordinate list
 
 // [0] = number of coordinates, [1...256] = data
-int32_t coords[257] = {3, 422923200, -837135440, 422923200, -837149320, 422911760, -837159110};
+//int32_t num_coords = 3;
+//int32_t coords[256] = {422923200, -837135440, 422923200, -837149320, 422911760, -837159110};
+int32_t num_coords = 1;
+int32_t coords[256] = {422925750, -837166570};
+int32_t* target_coord_ptr = coords;
+int32_t* end_coord_ptr = coords + 2;
 
 #ifdef __cplusplus
 extern "C"{
@@ -109,6 +118,61 @@ long latitude, longitude, altitude;
 //uint16_t protocolVersion;
 //volatile uint8_t pVH = 0, pVL = 0;
 
+long double factorial(unsigned int n) {
+    unsigned int ret = n--;
+    for (; n > 1; n--) {
+        ret *= n;
+    }
+    long double ldRet = ret;
+    return ldRet;
+}
+
+// Taylor series approximation of cosine
+long double taylorCos(unsigned int n, long double x) {
+    long double ret = 1;
+    bool neg = true;
+    for (unsigned int i = 2; i <= 2*n; i += 2) {
+        long double p = 1;
+        for (unsigned int j = 0; j < i; ++j) {
+            p *= x;
+        }
+        if (neg) {
+            ret -= p / factorial(i);
+        } else {
+            ret += p / factorial(i);
+        }
+        neg = !neg;
+    }
+    return ret;
+}
+
+void updateTargetCoord(int32_t latitude, int32_t longitude) {
+    if (target_coord_ptr == NULL) {
+        return;
+    }
+
+    // Calculate Euclidean distance between current and target coordinates
+    long double degLen = 110.25;
+    long double currLat = (long double)latitude * 0.0000001;
+    long double currLong = (long double)longitude * 0.0000001;
+    long double targetLat = (long double)target_coord_ptr[0] * 0.0000001;
+    long double targetLong = (long double)target_coord_ptr[1] * 0.0000001;
+    long double x = targetLat - currLat;
+    long double y = targetLong - currLong * cosl(currLat * (M_PI / 180));
+    //long double y = (targetLong - currLong) * taylorCos(2, currLat * (M_PI / 180));
+    long double dist = degLen * sqrtl(x*x + y*y);
+
+    if (dist < TARGET_COORD_THRESHOLD) {
+        target_coord_ptr += 2;
+        if (target_coord_ptr == end_coord_ptr) {
+            target_coord_ptr = NULL;
+        }
+    }
+
+    volatile long double test = atan2l((targetLat - currLat), (targetLong - currLong)) * (180 / M_PI);
+    (void)test;
+}
+
 void taskActive(void* pvParameters) {
     while (!myGPS.begin(Serial1)) {
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -163,9 +227,9 @@ void taskReceiveData(void* pvParameters) {
             // receive buffer is now empty
 
             // Reset number of coordinates
-            coords[0] = 0;
+            num_coords = 0;
             // Write pointer for coordinates array
-            int32_t* coord_ptr = coords + 1;
+            int32_t* coord_ptr = coords;
 
             volatile int32_t receivedLatitude = 0;
             volatile int32_t receivedLongitude = 0;
@@ -199,8 +263,10 @@ void taskReceiveData(void* pvParameters) {
                 receivedLongitude |= Serial.read();
                 *(coord_ptr++) = receivedLongitude;
 
-                coords[0]++;
+                num_coords++;
             }
+
+            end_coord_ptr = coords + (num_coords * 2);
 
             while(!(xSemaphoreTake( xReceiveSemaphore, ( TickType_t ) 10 ) == pdTRUE));
         }
@@ -221,6 +287,10 @@ void taskInit(void* pvParameters) {
         }
     }
 
+    updateTargetCoord(422925670, -837149970);
+
+    for(;;);
+
     xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
 //
@@ -240,7 +310,7 @@ void main(void) {
     // Setup hardware
     prvSetupHardware();
 
-    xTaskCreate(taskInit, "taskInit", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    xTaskCreate(taskInit, "taskInit", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL);
 
     // enable global interrupts
     __enable_interrupt();
