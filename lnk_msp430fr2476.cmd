@@ -146,11 +146,11 @@ SECTIONS
             .const      : {}                   /* Constant data                     */
         } > FRAM
 
-        GROUP(EXECUTABLE_MEMORY)
-        {
-            .text       : {}                   /* Code                              */
-            .text:_isr  : {}                   /* Code ISRs                         */
-        } > FRAM2
+        //GROUP(EXECUTABLE_MEMORY)
+        //{
+            .text       : {} >> FRAM2 | FRAM                 /* Code                              */
+            .text:_isr  : {} > FRAM                 /* Code ISRs                         */
+        //} //>> FRAM | FRAM2
     //} > FRAM
 
 #ifndef __LARGE_DATA_MODEL__
