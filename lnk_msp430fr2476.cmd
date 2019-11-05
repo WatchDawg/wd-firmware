@@ -126,14 +126,14 @@ MEMORY
 
 SECTIONS
 {
-    GROUP(ALL_FRAM)
-    {
+    //GROUP(ALL_FRAM)
+    //{
         GROUP(READ_WRITE_MEMORY)
         {
             .TI.persistent : {}              /* For #pragma persistent            */
             .cio           : {}              /* C I/O Buffer                      */
             .sysmem        : {}              /* Dynamic memory allocation area    */
-        } PALIGN(0x0400), RUN_START(fram_rw_start) RUN_END(fram_rx_start)
+        } PALIGN(0x0400), RUN_START(fram_rw_start) RUN_END(fram_rx_start) > FRAM
 
         GROUP(READ_ONLY_MEMORY)
         {
@@ -144,14 +144,14 @@ SECTIONS
             .mspabi.exidx : {}                 /* C++ constructor tables            */
             .mspabi.extab : {}                 /* C++ constructor tables            */
             .const      : {}                   /* Constant data                     */
-        }
+        } > FRAM
 
         GROUP(EXECUTABLE_MEMORY)
         {
             .text       : {}                   /* Code                              */
             .text:_isr  : {}                   /* Code ISRs                         */
-        }
-    } > FRAM
+        } > FRAM2
+    //} > FRAM
 
 #ifndef __LARGE_DATA_MODEL__
     .const            : {} > FRAM           /* Constant data                     */
