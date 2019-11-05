@@ -169,17 +169,22 @@ int16_t mag_getHeading() {
     volatile int16_t y = mag_readAxis('y');
     mag_setSingleShotMode();
 
-    // this delay isnt necessary when using the watchdawg normally
-//    volatile unsigned i = 0;
-//    for(i = 0; i < 8000; ++i) { }
+//    volatile int16_t x_corrected = (x-calData.offsetX)/calData.scaleX;
+//    volatile int16_t y_corrected = (y-calData.offsetY)/calData.scaleY;
 
-    volatile int16_t x_corrected = (x-calData.offsetX)/calData.scaleX;
-    volatile int16_t y_corrected = (y-calData.offsetY)/calData.scaleY;
+    long double x_ldbl = (x-calData.offsetX)/calData.scaleX;
+    long double y_ldbl = (y-calData.offsetY)/calData.scaleY;
 
-    corrected = 180 * ((_IQ12toF(_IQ12atan2(_IQ12(y_corrected),_IQ12(x_corrected))))/M_PI);
-    if(corrected < 0) {
-        corrected += 360;
+    volatile long double corrected_ldbl = 180 * (atan2l(y_ldbl, x_ldbl))/M_PI;
+//    corrected = 180 * ((_IQ12toF(_IQ12atan2(_IQ12(y_corrected),_IQ12(x_corrected))))/M_PI);
+//    if(corrected < 0) {
+//        corrected += 360;
+//    }
+//    return corrected;
+    if(corrected_ldbl < 0) {
+        corrected_ldbl += 360;
     }
+    corrected = corrected_ldbl+0.5;
     return corrected;
 }
 

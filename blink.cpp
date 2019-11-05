@@ -123,33 +123,33 @@ long latitude, longitude, altitude;
 //uint16_t protocolVersion;
 //volatile uint8_t pVH = 0, pVL = 0;
 
-long double factorial(unsigned int n) {
-    unsigned int ret = n--;
-    for (; n > 1; n--) {
-        ret *= n;
-    }
-    long double ldRet = ret;
-    return ldRet;
-}
-
-// Taylor series approximation of cosine
-long double taylorCos(unsigned int n, long double x) {
-    long double ret = 1;
-    bool neg = true;
-    for (unsigned int i = 2; i <= 2*n; i += 2) {
-        long double p = 1;
-        for (unsigned int j = 0; j < i; ++j) {
-            p *= x;
-        }
-        if (neg) {
-            ret -= p / factorial(i);
-        } else {
-            ret += p / factorial(i);
-        }
-        neg = !neg;
-    }
-    return ret;
-}
+//long double factorial(unsigned int n) {
+//    unsigned int ret = n--;
+//    for (; n > 1; n--) {
+//        ret *= n;
+//    }
+//    long double ldRet = ret;
+//    return ldRet;
+//}
+//
+//// Taylor series approximation of cosine
+//long double taylorCos(unsigned int n, long double x) {
+//    long double ret = 1;
+//    bool neg = true;
+//    for (unsigned int i = 2; i <= 2*n; i += 2) {
+//        long double p = 1;
+//        for (unsigned int j = 0; j < i; ++j) {
+//            p *= x;
+//        }
+//        if (neg) {
+//            ret -= p / factorial(i);
+//        } else {
+//            ret += p / factorial(i);
+//        }
+//        neg = !neg;
+//    }
+//    return ret;
+//}
 
 void updateTargetCoord(int32_t latitude, int32_t longitude) {
     if (target_coord_ptr == NULL) {
@@ -190,32 +190,34 @@ void taskActive(void* pvParameters) {
     for(;;) {
         if(xSemaphoreTake( xActiveSemaphore, ( TickType_t ) 10 ) == pdTRUE ) {
 
-            char tmpStr[] = "RUNNING TASK\r\n";
+            char tmpStr[] = "---\r\n";
             printStr(tmpStr);
 
-            volatile int16_t corrected = 0;
-            corrected = mag_getHeading();
+            mag_heading = mag_getHeading();
 
             volatile int16_t temp = mag_getTemp();
 
-            char strCorrected[8];
-            itoa((int)corrected, strCorrected, 10);
-            printStr(strCorrected);
+            char strHeading[8];
+            itoa((int)mag_heading, strHeading, 10);
+            printStr(strHeading);
             char crlf[] = "\r\n";
             printStr(crlf);
 
             // Wake up GPS by sending a UART message
             // Loop until we get a nonzero value for each measurement
-            while(!(latitude = myGPS.getLatitude()));
-            while(!(longitude = myGPS.getLongitude()));
-            while(!(altitude = myGPS.getAltitudeMSL()));
+            while(!(latitude = myGPS.getLatitude())) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+            while(!(longitude = myGPS.getLongitude())) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+            while(!(altitude = myGPS.getAltitudeMSL())) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+//            latitude = myGPS.getLatitude();
+//            longitude = myGPS.getLongitude();
             // Put GPS into inactive mode until we communicate with it again
             myGPS.setInactive();
-
-            char strLat[32];
-            itoa((long int)latitude, strLat, 10);
-            printStr(strLat);
-            printStr(crlf);
 
             updateTargetCoord(latitude, longitude);
 
@@ -223,8 +225,18 @@ void taskActive(void* pvParameters) {
             if (dir_heading < 0) {
                 dir_heading += 360;
             }
-        }
 
+            char strGps[32];
+            itoa((long int)gps_heading, strGps, 10);
+            printStr(strGps);
+            printStr(crlf);
+
+            char strDir[32];
+            itoa((long int)dir_heading, strDir, 10);
+            printStr(strDir);
+            printStr(crlf);
+
+        }
     }
 }
 
@@ -290,10 +302,10 @@ void taskReceiveData(void* pvParameters) {
 }
 
 void taskInit(void* pvParameters) {
-    //mag_init();
+    mag_init();
 
     Serial.begin(9600);
-    //Serial1.begin(9600);
+    Serial1.begin(9600);
 
     xActiveSemaphore = xSemaphoreCreateBinary();
     xReceiveSemaphore = xSemaphoreCreateBinary();
@@ -305,17 +317,18 @@ void taskInit(void* pvParameters) {
 
     //updateTargetCoord(422925670, -837149970);
 
+
     xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
 //
 //    /* FOR BREADBOARD BUTTON TEST */
-//    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);
-//    GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
-//    GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
-//    GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
-//
-//    xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-//    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE * 2, NULL, 2, NULL);
+    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);
+    GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+    GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+    GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
+
+    xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE * 2, NULL, 2, NULL);
     vTaskSuspend(NULL);
 }
 

@@ -17,8 +17,8 @@ The debug function uses EUSCA A0's UART to print over the USB backchannel
 /* TI MSP430 library headers */
 #include "msp430fr2476.h"
 #include "driverlib.h"
-#include "IQmathLib.h"
-#include "QmathLib.h"
+//#include "IQmathLib.h"
+//#include "QmathLib.h"
 
 #define INTERRUPT_FLAG_REG UCB1IFG
 #define SPI_CS_PORT GPIO_PORT_P4
