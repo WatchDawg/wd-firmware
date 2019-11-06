@@ -44,6 +44,17 @@ void vApplicationIdleHook( void )
     __no_operation();
 }
 
+void vApplicationStackOverflowHook( TaskHandle_t xTask,
+                                    signed char *pcTaskName )
+{
+    configASSERT(false);
+}
+
+void vApplicationMallocFailedHook( void )
+{
+    configASSERT(false);
+}
+
 void vApplicationSetupTimerInterrupt( void ) {
     const unsigned short usACLK_Frequency_Hz = 32768;
 
@@ -109,6 +120,13 @@ void printStr(char* str) {
     }
 }
 
+void taskTest(void* pvParameters) {
+    volatile i = 0;
+    for(;;) {
+        i++;
+    }
+}
+
 void taskPeriodic(void* pvParameters) {
     for(;;) {
         vTaskDelay(pdMS_TO_TICKS(5000));
@@ -163,7 +181,7 @@ void updateTargetCoord(int32_t latitude, int32_t longitude) {
     long double targetLat = (long double)target_coord_ptr[0] * 0.0000001;
     long double targetLong = (long double)target_coord_ptr[1] * 0.0000001;
     long double x = targetLat - currLat;
-    long double y = targetLong - currLong * cosl(currLat * (M_PI / 180));
+    long double y = (targetLong - currLong) * cosl(currLat * (M_PI / 180));
     //long double y = (targetLong - currLong) * taylorCos(2, currLat * (M_PI / 180));
     distance = degLen * sqrtl(x*x + y*y) * 1000;
 
@@ -226,16 +244,18 @@ void taskActive(void* pvParameters) {
                 dir_heading += 360;
             }
 
-            char strGps[32];
-            itoa((long int)gps_heading, strGps, 10);
-            printStr(strGps);
+            char strBuf[32];
+            itoa((long int)gps_heading, strBuf, 10);
+            printStr(strBuf);
             printStr(crlf);
 
-            char strDir[32];
-            itoa((long int)dir_heading, strDir, 10);
-            printStr(strDir);
+            itoa((long int)dir_heading, strBuf, 10);
+            printStr(strBuf);
             printStr(crlf);
 
+            itoa((long int)trunc(distance), strBuf, 10);
+            printStr(strBuf);
+            printStr(crlf);
         }
     }
 }
@@ -318,7 +338,7 @@ void taskInit(void* pvParameters) {
     //updateTargetCoord(422925670, -837149970);
 
 
-    xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
 //
 //    /* FOR BREADBOARD BUTTON TEST */
@@ -327,8 +347,20 @@ void taskInit(void* pvParameters) {
     GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
     GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
 
-    xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE * 2, NULL, 2, NULL);
+    xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    xTaskCreate(taskTest, "taskTest", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
+    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
+    //xTaskCreate(taskTest, "taskTest", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
+
+//    TaskStatus_t *pxTaskStatusArray;
+//    volatile UBaseType_t uxArraySize, x;
+//    unsigned long ulTotalRunTime, ulStatsAsPercentage;
+//    uxArraySize = uxTaskGetNumberOfTasks();
+//    pxTaskStatusArray = (TaskStatus_t*)pvPortMalloc( uxArraySize * sizeof( TaskStatus_t ) );
+//    uxArraySize = uxTaskGetSystemState( pxTaskStatusArray,
+//                                     uxArraySize,
+//                                     &ulTotalRunTime );
+
     vTaskSuspend(NULL);
 }
 
@@ -337,7 +369,7 @@ void main(void) {
     // Setup hardware
     prvSetupHardware();
 
-    xTaskCreate(taskInit, "taskInit", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    xTaskCreate(taskInit, "taskInit", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 
     // enable global interrupts
     __enable_interrupt();

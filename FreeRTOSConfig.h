@@ -45,7 +45,7 @@ __persistent keyword to be used.  See http://www.freertos.org/a00111.html#heap_4
 #define configMAX_PRIORITIES					( 5 )
 #define configCPU_CLOCK_HZ						( 16000000 )
 #define configTICK_RATE_HZ						( 1000 ) /* In this non-real time simulated environment the tick frequency has to be at least a multiple of the Win32 tick frequency, and therefore very slow. */
-#define configTOTAL_HEAP_SIZE					( 4 * 1024 )
+#define configTOTAL_HEAP_SIZE					( 6 * 1024 )
 #define configMAX_TASK_NAME_LEN					( 15 )
 #define configUSE_TRACE_FACILITY				1
 #define configUSE_16_BIT_TICKS					0
@@ -55,6 +55,8 @@ __persistent keyword to be used.  See http://www.freertos.org/a00111.html#heap_4
 /* Hook function related definitions. */
 #define configUSE_TICK_HOOK				0
 #define configUSE_IDLE_HOOK				1
+#define configCHECK_FOR_STACK_OVERFLOW          2
+#define configUSE_MALLOC_FAILED_HOOK            1
 
 /* Software timer related definitions. */
 #define configUSE_TIMERS				1
