@@ -3,13 +3,11 @@
 #include "task.h"
 #include "queue.h"
 #include "semphr.h"
-
 #include "driverlib.h"
-
-#include "Ublox_GPS.h"
-
 #include "magnetometer.h"
-#include "magnetometer.c"
+#include "Ublox_GPS.h"
+#include "GUI_Paint.h"
+#include "display.h"
 
 #include <math.h>
 
@@ -321,6 +319,102 @@ void taskReceiveData(void* pvParameters) {
     }
 }
 
+SemaphoreHandle_t displaySemaphore = NULL;
+
+void taskFullRefresh(void* pvParameters) {
+    display_t* disp = (display_t*)pvParameters;
+    for (;;) {
+        while (xSemaphoreTake(displaySemaphore, (TickType_t)10) == pdFALSE)
+            ;
+        display_fullrefresh(disp);
+        display_draw_image(disp);
+        xSemaphoreGive(displaySemaphore);
+        vTaskDelay(pdMS_TO_TICKS(10000));
+    }
+}
+
+void taskDraw(void* pvParameters) {
+    display_t* disp = (display_t*)malloc(sizeof(display_t));
+    uint8_t* Full_Image;
+    display_init(disp, (io_pin_t){GPIO_PORT_P3, GPIO_PIN2}, // mosi
+                 (io_pin_t){GPIO_PORT_P3, GPIO_PIN5},       // sclk
+                 (io_pin_t){GPIO_PORT_P4, GPIO_PIN2},       // cs
+                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN0},       // dc
+                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN1},       // rst
+                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN2},       // busy
+                 200,                                       // width
+                 200,                                       // height
+                 EPD_1IN54_PART); // mode EPD_1IN54_PART
+
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    display_get_image(disp, &Full_Image);
+
+    Paint_NewImage(Full_Image, EPD_1IN54_WIDTH, EPD_1IN54_HEIGHT, 270, WHITE);
+    Paint_Clear(WHITE);
+    Paint_DrawOutline();
+    display_draw_image(disp);
+
+    uint16_t angle = 340;
+    PAINT_TIME sPaint_time;
+    sPaint_time.Hour = 3;
+    sPaint_time.Min = 34;
+    sPaint_time.Sec = 56;
+    int toggle = 1;
+
+    displaySemaphore = xSemaphoreCreateBinary();
+    xSemaphoreGive(displaySemaphore);
+
+    xTaskCreate(taskFullRefresh, "FullRefresh", configMINIMAL_STACK_SIZE,
+                (void*)disp, 2, NULL);
+
+    for (;;) {
+        angle = (angle + 20) % 360;
+        sPaint_time.Sec = sPaint_time.Sec + 1;
+        if (sPaint_time.Sec == 60) {
+            sPaint_time.Min = sPaint_time.Min + 1;
+            sPaint_time.Sec = 0;
+            if (sPaint_time.Min == 60) {
+                sPaint_time.Hour = sPaint_time.Hour + 1;
+                sPaint_time.Min = 0;
+                if (sPaint_time.Hour == 24) {
+                    sPaint_time.Hour = 0;
+                    sPaint_time.Min = 0;
+                    sPaint_time.Sec = 0;
+                }
+            }
+        }
+
+        Paint_DrawTime(5, 175, sPaint_time.Hour, sPaint_time.Sec, &Font20,
+                       WHITE, BLACK);
+        Paint_DrawDate(115, 175, sPaint_time.Sec % 12, sPaint_time.Sec % 30,
+                       &Font20, WHITE, BLACK);
+        Paint_DrawDistance(125, 20, sPaint_time.Sec * 111);
+        Paint_DrawTemp(140, 55, sPaint_time.Sec);
+        Paint_DrawTemp(140, 85, sPaint_time.Sec);
+        Paint_DrawLatLon(10, 125,
+                         sPaint_time.Sec * 10101010 * (-toggle) +
+                             (toggle == 1 ? 1422775600 : 0),
+                         toggle * sPaint_time.Sec *
+                             49375201); // 1422775600, -1837408800
+        toggle = -toggle;
+        Paint_DrawDate(115, 175, sPaint_time.Sec % 12, sPaint_time.Sec, &Font20,
+                       WHITE, BLACK);
+
+        Paint_ClearWindows(10, 10, 120, 120, WHITE);
+        Paint_DrawCircle(65, 65, 55, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
+        Paint_DrawArrowd(angle);
+        Paint_DrawNorth(angle + 45);
+
+        while (xSemaphoreTake(displaySemaphore, (TickType_t)10) == pdFALSE)
+            ;
+        display_draw_image(disp);
+        xSemaphoreGive(displaySemaphore);
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
 void taskInit(void* pvParameters) {
     mag_init();
 
@@ -350,6 +444,8 @@ void taskInit(void* pvParameters) {
     xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
     xTaskCreate(taskTest, "taskTest", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
     xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
+    xTaskCreate(taskTest, "taskTest2", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL);
+    xTaskCreate(taskDraw, "Draw", configMINIMAL_STACK_SIZE * 2, NULL, 1, NULL);
     //xTaskCreate(taskTest, "taskTest", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
 
 //    TaskStatus_t *pxTaskStatusArray;
@@ -368,7 +464,7 @@ void taskInit(void* pvParameters) {
 void main(void) {
     // Setup hardware
     prvSetupHardware();
-
+    
     xTaskCreate(taskInit, "taskInit", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 
     // enable global interrupts

@@ -115,5 +115,8 @@ SUBDIRS := \
 FreeRTOS \
 FreeRTOS/portable \
 Ublox_GPS \
+common \
 driverlib/MSP430FR2xx_4xx \
+epaper \
+magnetometer \
 
