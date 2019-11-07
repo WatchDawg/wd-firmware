@@ -223,7 +223,7 @@ void taskActive(void* pvParameters) {
 
             while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE)
                 ;
-            EUSCI_B_SPI_changeSpiFrequency (5000000);
+            // EUSCI_B_SPI_changeSpiFrequency (5000000);
             mag_heading = mag_getHeading();
             temp = mag_getTemp();
             xSemaphoreGive(xSPISemaphore);
@@ -318,7 +318,7 @@ void taskActive(void* pvParameters) {
 
             while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE)
                 ;
-            EUSCI_B_SPI_changeSpiFrequency (16000000);
+            // EUSCI_B_SPI_changeSpiFrequency (16000000);
             vTaskDelay(pdMS_TO_TICKS(10));
             display_draw_image(disp);
             xSemaphoreGive(xSPISemaphore);
@@ -392,8 +392,10 @@ void taskFullRefresh(void* pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(100000));
         while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE)
             ;
-        EUSCI_B_SPI_changeSpiFrequency (16000000);
+        // EUSCI_B_SPI_changeSpiFrequency (16000000);
         display_fullrefresh(disp);
+        Paint_Clear(WHITE);
+        Paint_DrawOutline();
         display_draw_image(disp);
         xSemaphoreGive(xSPISemaphore);
     }
@@ -416,7 +418,7 @@ void taskInit(void* pvParameters) {
 
     vTaskDelay(pdMS_TO_TICKS(500));
 
-    EUSCI_B_SPI_changeSpiFrequency (16000000);
+    // EUSCI_B_SPI_changeSpiFrequency (5000000);
     display_get_image(disp, &Full_Image);
 
     Paint_NewImage(Full_Image, EPD_1IN54_WIDTH, EPD_1IN54_HEIGHT, 270, WHITE);

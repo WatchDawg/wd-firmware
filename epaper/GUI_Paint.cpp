@@ -647,6 +647,10 @@ void Paint_DrawTime(uint16_t Xstart,
         Hour -= 12;
     }
 
+    if(Hour == 0) {
+        Hour = 12;
+    }
+
     // Clear buffer in specified range
     Paint_ClearWindows(5, 175, 5 + Font20.Width * 7, 175 + Font20.Height, WHITE);
 
@@ -673,8 +677,8 @@ void Paint_DrawDate(uint16_t Xstart,
     // Clear buffer in specified range
     Paint_ClearWindows(Xstart, Ystart, Xstart + Font20.Width * 6, Ystart + Font20.Height, WHITE);
 
-    char* months[12] = {
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    char* months[13] = {
+        "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
     // Write data into the cache
     Paint_DrawChar(Xstart, Ystart, months[Month][0], Font, Color_Background, Color_Foreground);
@@ -690,7 +694,7 @@ void Paint_DrawDate(uint16_t Xstart,
 }
 
 void Paint_DrawDistance(uint16_t Xstart, uint16_t Ystart, int distance) {
-    Paint_ClearWindows(Xstart, Ystart, 199, Ystart + Font20.Height, WHITE);
+    Paint_ClearWindows(Xstart, Ystart, 200, Ystart + Font20.Height, WHITE);
 
     int offset = Paint_DrawNum(Xstart, Ystart, distance, &Font20, WHITE, BLACK);
     Paint_DrawChar(Xstart + Font20.Width * offset, Ystart, 'm', &Font20, BLACK, WHITE);
@@ -836,59 +840,44 @@ inline void draw_arrow(uint16_t arrow_tip_len,
 }
 
 void Paint_DrawArrowd(const uint16_t angle_deg) {
-    const float cx = 65.f; // center x
-    const float cy = 65.f; // center y
+    // Center of rotation
+    const point_t center = {65, 65};
 
-    const uint16_t padding       = 30; // padding between arrow and quarter-screen edges
-    const uint16_t arrow_len     = 70; // Arrow length
+    // Figure parameters
+    const uint16_t padding       = 30; // padding between arrow and screen edges
+    const uint16_t arrow_len     = 70;
     const uint16_t arrow_tip_len = 15;
 
+    // Angle calculations
     float theta     = (float)angle_deg / 180.f * M_PI;
     float cos_theta = cosf(theta);
     float sin_theta = sinf(theta);
 
-    // counters
-    uint16_t i;
+    // Arrow shaft endpoints
+    point_t start = {padding, center.x};
+    point_t stop = {padding + arrow_len, center.x};
 
-    // point coordinates
-    point_t p;
-    point_t center = {cx, cy};
-
-    // Draw arrow shaft
-    for(i = 0; i < arrow_len; ++i) {
-        // Generate a point (x, y) for a pixel on the arrow
-        p.x = padding + i;
-        p.y = cx;
-
-        // Rotate pixel
-        p = rot(p, center, cos_theta, sin_theta);
-
-        // Draw pixel
-        Paint_DrawPoint(p.y, p.x, BLACK, DOT_PIXEL_2X2, DOT_FILL_AROUND);
-    }
+    // Rotate endpoints
+    start = rot(start, center, cos_theta, sin_theta);
+    stop = rot(stop, center, cos_theta, sin_theta);
+    Paint_DrawLine(start.y, start.x, stop.y, stop.x, BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
 
     // Draw arrow points
     draw_arrow(arrow_tip_len, padding, center, cos_theta, sin_theta, false);
 }
 
 void Paint_DrawNorth(const uint16_t angle_deg) {
-    const float cx = 65.f; // center x
-    const float cy = 65.f; // center y
+    // Center of rotation
+    point_t center = {65, 65};
 
-    const uint16_t padding       = 14; // padding between arrow and quarter-screen edges
-    const uint16_t arrow_len     = 80; // Arrow length
+    // Figure parameters
+    const uint16_t padding       = 14; // padding between arrow and screen edges
     const uint16_t arrow_tip_len = 10;
 
+    // Angle calculations
     float theta     = (float)angle_deg / 180.f * M_PI;
     float cos_theta = cosf(theta);
     float sin_theta = sinf(theta);
-
-    // counters
-    uint16_t i;
-
-    // point coordinates
-    // point_t p1, p2;
-    point_t center = {cx, cy};
 
     // Draw arrow points
     draw_arrow(arrow_tip_len, padding, center, cos_theta, sin_theta, true);

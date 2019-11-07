@@ -140,7 +140,7 @@ void mag_initSPI() {
      * Disable the GPIO power-on default high-impedance mode to activate
      * previously configured port settings
      */
-    PMM_unlockLPM5();
+    // PMM_unlockLPM5();
 
     // Configure SPI
     EUSCI_B_SPI_initMasterParam config = {0};
