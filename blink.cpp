@@ -23,8 +23,8 @@ SemaphoreHandle_t displaySemaphore = NULL;
 // [0] = number of coordinates, [1...256] = data
 //int32_t num_coords = 3;
 //int32_t coords[256] = {422923200, -837135440, 422923200, -837149320, 422911760, -837159110};
-int32_t num_coords = 1;
-int32_t coords[256] = {422925750, -837166570};
+int32_t num_coords = 3;
+int32_t coords[256] = {422925750, -837166570, 422916720, -837166310, 422916910, -837150770};
 int32_t* target_coord_ptr = coords;
 int32_t* end_coord_ptr = coords + 2;
 
@@ -138,6 +138,7 @@ void taskPeriodic(void* pvParameters) {
 SFE_UBLOX_GPS myGPS;
 
 long latitude, longitude, altitude;
+uint8_t siv;
 //uint8_t SIV;
 //uint16_t protocolVersion;
 //volatile uint8_t pVH = 0, pVL = 0;
@@ -170,28 +171,28 @@ long latitude, longitude, altitude;
 //    return ret;
 //}
 
-void updateTargetCoord(int32_t latitude, int32_t longitude) {
+void updateTargetCoord() {
     if (target_coord_ptr == NULL) {
         return;
     }
 
     // Calculate Euclidean distance between current and target coordinates
     long double degLen = 110.25;
-    long double currLat = (long double)latitude * 0.0000001;
-    long double currLong = (long double)longitude * 0.0000001;
-    long double targetLat = (long double)target_coord_ptr[0] * 0.0000001;
-    long double targetLong = (long double)target_coord_ptr[1] * 0.0000001;
+    long double currLat = (long double)latitude * 0.0001;
+    long double currLong = (long double)longitude * 0.0001;
+    long double targetLat = (long double)target_coord_ptr[0] * 0.0001;
+    long double targetLong = (long double)target_coord_ptr[1] * 0.0001;
     long double x = targetLat - currLat;
     long double y = (targetLong - currLong) * cosl(currLat * (M_PI / 180));
     //long double y = (targetLong - currLong) * taylorCos(2, currLat * (M_PI / 180));
-    distance = degLen * sqrtl(x*x + y*y) * 1000;
+    distance = degLen * sqrtl(x*x + y*y);
 
     if (distance < TARGET_COORD_THRESHOLD) {
         target_coord_ptr += 2;
         if (target_coord_ptr == end_coord_ptr) {
             target_coord_ptr = NULL;
         }
-        updateTargetCoord(latitude, longitude);
+        updateTargetCoord();
     }
 
     long double heading = atan2l((targetLat - currLat), (targetLong - currLong)) * (180.0 / M_PI);
@@ -213,6 +214,9 @@ void taskActive(void* pvParameters) {
     for(;;) {
         if(xSemaphoreTake( xActiveSemaphore, ( TickType_t ) 10 ) == pdTRUE ) {
 
+            uint8_t cnt = 0;
+            long long runningLat = 0, runningLong = 0;
+
             char tmpStr[] = "---\r\n";
             printStr(tmpStr);
 
@@ -228,21 +232,35 @@ void taskActive(void* pvParameters) {
 
             // Wake up GPS by sending a UART message
             // Loop until we get a nonzero value for each measurement
-            while(!(latitude = myGPS.getLatitude())) {
+            siv = myGPS.getSIV();
+            while(siv < 6) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+                siv = myGPS.getSIV();
+            }
+            while(!(latitude = myGPS.getLatitude()) || cnt < 3) {
+                if (latitude) {
+                    runningLat += latitude;
+                    cnt++;
+                }
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
-            while(!(longitude = myGPS.getLongitude())) {
+            latitude = (long)(runningLat / 3);
+            cnt = 0;
+            while(!(longitude = myGPS.getLongitude()) || cnt < 3) {
+                if (longitude) {
+                    runningLong += longitude;
+                    cnt++;
+                }
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
-            while(!(altitude = myGPS.getAltitudeMSL())) {
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
+            longitude = (long)(runningLong / 3);
 //            latitude = myGPS.getLatitude();
 //            longitude = myGPS.getLongitude();
             // Put GPS into inactive mode until we communicate with it again
             myGPS.setInactive();
+            (void)siv;
 
-            updateTargetCoord(latitude, longitude);
+            updateTargetCoord();
 
             dir_heading = gps_heading - mag_heading;
             if (dir_heading < 0) {
