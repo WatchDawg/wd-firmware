@@ -18,7 +18,7 @@
 
 SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
 SemaphoreHandle_t xReceiveSemaphore; // used to signal when to start receiving/storing user's coordinate list
-SemaphoreHandle_t displaySemaphore = NULL;
+SemaphoreHandle_t xSPISemaphore = NULL;
 
 // [0] = number of coordinates, [1...256] = data
 //int32_t num_coords = 3;
@@ -125,6 +125,7 @@ void taskTest(void* pvParameters) {
     volatile i = 0;
     for(;;) {
         i++;
+        vTaskDelay(pdMS_TO_TICKS(1000000));
     }
 }
 
@@ -220,9 +221,12 @@ void taskActive(void* pvParameters) {
             char tmpStr[] = "---\r\n";
             printStr(tmpStr);
 
+            while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE)
+                ;
+            EUSCI_B_SPI_changeSpiFrequency (5000000);
             mag_heading = mag_getHeading();
-
             temp = mag_getTemp();
+            xSemaphoreGive(xSPISemaphore);
 
             char strHeading[8];
             itoa((int)mag_heading, strHeading, 10);
@@ -232,30 +236,31 @@ void taskActive(void* pvParameters) {
 
             // Wake up GPS by sending a UART message
             // Loop until we get a nonzero value for each measurement
-            siv = myGPS.getSIV();
-            while(siv < 6) {
-                vTaskDelay(pdMS_TO_TICKS(10));
-                siv = myGPS.getSIV();
-            }
-            while(!(latitude = myGPS.getLatitude()) || cnt < 3) {
-                if (latitude) {
-                    runningLat += latitude;
-                    cnt++;
-                }
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
-            latitude = (long)(runningLat / 3);
-            cnt = 0;
-            while(!(longitude = myGPS.getLongitude()) || cnt < 3) {
-                if (longitude) {
-                    runningLong += longitude;
-                    cnt++;
-                }
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
-            longitude = (long)(runningLong / 3);
-//            latitude = myGPS.getLatitude();
-//            longitude = myGPS.getLongitude();
+//            siv = myGPS.getSIV();
+//            while(siv < 6) {
+//                vTaskDelay(pdMS_TO_TICKS(10));
+//                siv = myGPS.getSIV();
+//            }
+//            while(!(latitude = myGPS.getLatitude()) || cnt < 3) {
+//                if (latitude) {
+//                    runningLat += latitude;
+//                    cnt++;
+//                }
+//                vTaskDelay(pdMS_TO_TICKS(10));
+//            }
+//            latitude = (long)(runningLat / 3);
+//            cnt = 0;
+//            while(!(longitude = myGPS.getLongitude()) || cnt < 3) {
+//                if (longitude) {
+//                    runningLong += longitude;
+//                    cnt++;
+//                }
+//                vTaskDelay(pdMS_TO_TICKS(10));
+//            }
+//            longitude = (long)(runningLong / 3);
+
+            latitude = myGPS.getLatitude();
+            longitude = myGPS.getLongitude();
             // Put GPS into inactive mode until we communicate with it again
             myGPS.setInactive();
             (void)siv;
@@ -294,13 +299,14 @@ void taskActive(void* pvParameters) {
                     }
                 }
             }
+
             Paint_DrawTime(5, 175, sPaint_time.Hour, sPaint_time.Sec, &Font20,
                        WHITE, BLACK);
             Paint_DrawDate(115, 175, sPaint_time.Sec % 12, sPaint_time.Sec % 30,
                         &Font20, WHITE, BLACK);
             Paint_DrawDistance(125, 20, (int)trunc(distance));
             Paint_DrawTemp(140, 55, temp);
-            // Paint_DrawTemp(140, 85, sPaint_time.Sec);
+            // Paint_DrawTemp(140, 85, sPaint_time.Sec); // reserved to show battery charge level (Reach goal)
             Paint_DrawLatLon(10, 125, latitude, longitude); // 1422775600, -1837408800
             Paint_DrawDate(115, 175, sPaint_time.Sec % 12, sPaint_time.Sec%30, &Font20,
                         WHITE, BLACK);
@@ -310,10 +316,12 @@ void taskActive(void* pvParameters) {
             Paint_DrawArrowd(dir_heading);
             Paint_DrawNorth(360 - mag_heading);
 
-            while (xSemaphoreTake(displaySemaphore, (TickType_t)10) == pdFALSE)
+            while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE)
                 ;
+            EUSCI_B_SPI_changeSpiFrequency (16000000);
+            vTaskDelay(pdMS_TO_TICKS(10));
             display_draw_image(disp);
-            xSemaphoreGive(displaySemaphore);
+            xSemaphoreGive(xSPISemaphore);
         }
     }
 }
@@ -381,96 +389,16 @@ void taskReceiveData(void* pvParameters) {
 
 void taskFullRefresh(void* pvParameters) {
     for (;;) {
-        while (xSemaphoreTake(displaySemaphore, (TickType_t)10) == pdFALSE)
+        vTaskDelay(pdMS_TO_TICKS(100000));
+        while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE)
             ;
+        EUSCI_B_SPI_changeSpiFrequency (16000000);
         display_fullrefresh(disp);
         display_draw_image(disp);
-        xSemaphoreGive(displaySemaphore);
-        vTaskDelay(pdMS_TO_TICKS(100000));
+        xSemaphoreGive(xSPISemaphore);
     }
 }
-//
-//void taskDraw(void* pvParameters) {
-//    display_t* disp = (display_t*)malloc(sizeof(display_t));
-//    uint8_t* Full_Image;
-//    display_init(disp, (io_pin_t){GPIO_PORT_P3, GPIO_PIN2}, // mosi
-//                 (io_pin_t){GPIO_PORT_P3, GPIO_PIN5},       // sclk
-//                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN7},       // cs
-//                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN0},       // dc
-//                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN1},       // rst
-//                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN2},       // busy
-//                 200,                                       // width
-//                 200,                                       // height
-//                 EPD_1IN54_PART); // mode EPD_1IN54_PART
-//
-//    vTaskDelay(pdMS_TO_TICKS(500));
-//
-//    display_get_image(disp, &Full_Image);
-//
-//    Paint_NewImage(Full_Image, EPD_1IN54_WIDTH, EPD_1IN54_HEIGHT, 270, WHITE);
-//    Paint_Clear(WHITE);
-//    Paint_DrawOutline();
-//    display_draw_image(disp);
-//
-//    uint16_t angle = 340;
-//    PAINT_TIME sPaint_time;
-//    sPaint_time.Hour = 3;
-//    sPaint_time.Min = 34;
-//    sPaint_time.Sec = 56;
-//    int toggle = 1;
-//
-//    displaySemaphore = xSemaphoreCreateBinary();
-//    xSemaphoreGive(displaySemaphore);
-//
-//    xTaskCreate(taskFullRefresh, "FullRefresh", configMINIMAL_STACK_SIZE,
-//                (void*)disp, 2, NULL);
-//
-//    for (;;) {
-//        angle = (angle + 20) % 360;
-//        sPaint_time.Sec = sPaint_time.Sec + 1;
-//        if (sPaint_time.Sec == 60) {
-//            sPaint_time.Min = sPaint_time.Min + 1;
-//            sPaint_time.Sec = 0;
-//            if (sPaint_time.Min == 60) {
-//                sPaint_time.Hour = sPaint_time.Hour + 1;
-//                sPaint_time.Min = 0;
-//                if (sPaint_time.Hour == 24) {
-//                    sPaint_time.Hour = 0;
-//                    sPaint_time.Min = 0;
-//                    sPaint_time.Sec = 0;
-//                }
-//            }
-//        }
-//
-//        Paint_DrawTime(5, 175, sPaint_time.Hour, sPaint_time.Sec, &Font20,
-//                       WHITE, BLACK);
-//        Paint_DrawDate(115, 175, sPaint_time.Sec % 12, sPaint_time.Sec % 30,
-//                       &Font20, WHITE, BLACK);
-//        Paint_DrawDistance(125, 20, sPaint_time.Sec * 111);
-//        Paint_DrawTemp(140, 55, sPaint_time.Sec);
-//        Paint_DrawTemp(140, 85, sPaint_time.Sec);
-//        Paint_DrawLatLon(10, 125,
-//                         sPaint_time.Sec * 10101010 * (-toggle) +
-//                             (toggle == 1 ? 1422775600 : 0),
-//                         toggle * sPaint_time.Sec *
-//                             49375201); // 1422775600, -1837408800
-//        toggle = -toggle;
-//        Paint_DrawDate(115, 175, sPaint_time.Sec % 12, sPaint_time.Sec, &Font20,
-//                       WHITE, BLACK);
-//
-//        Paint_ClearWindows(10, 10, 120, 120, WHITE);
-//        Paint_DrawCircle(65, 65, 55, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
-//        Paint_DrawArrowd(angle);
-//        Paint_DrawNorth(angle + 45);
-//
-//        while (xSemaphoreTake(displaySemaphore, (TickType_t)10) == pdFALSE)
-//            ;
-//        display_draw_image(disp);
-//        xSemaphoreGive(displaySemaphore);
-//
-//        vTaskDelay(pdMS_TO_TICKS(100));
-//    }
-//}
+
 
 void taskInit(void* pvParameters) {
     mag_init();
@@ -488,6 +416,7 @@ void taskInit(void* pvParameters) {
 
     vTaskDelay(pdMS_TO_TICKS(500));
 
+    EUSCI_B_SPI_changeSpiFrequency (16000000);
     display_get_image(disp, &Full_Image);
 
     Paint_NewImage(Full_Image, EPD_1IN54_WIDTH, EPD_1IN54_HEIGHT, 270, WHITE);
@@ -495,20 +424,19 @@ void taskInit(void* pvParameters) {
     Paint_DrawOutline();
     display_draw_image(disp);
 
-    displaySemaphore = xSemaphoreCreateBinary();
-    xSemaphoreGive(displaySemaphore);
-
-
     Serial.begin(9600);
     Serial1.begin(9600);
 
     xActiveSemaphore = xSemaphoreCreateBinary();
     xReceiveSemaphore = xSemaphoreCreateBinary();
-    if(xActiveSemaphore == NULL || xReceiveSemaphore == NULL) {
+    xSPISemaphore = xSemaphoreCreateBinary();
+    if(xActiveSemaphore == NULL || xReceiveSemaphore == NULL || xSPISemaphore == NULL) {
         while(1) {
             //spin;
         }
     }
+    // Explicitly give display semaphore
+    xSemaphoreGive(xSPISemaphore);
 
     //updateTargetCoord(422925670, -837149970);
 

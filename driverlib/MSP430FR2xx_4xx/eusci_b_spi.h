@@ -291,6 +291,8 @@ extern void EUSCI_B_SPI_select4PinFunctionality(uint16_t baseAddress,
 extern void EUSCI_B_SPI_changeMasterClock(uint16_t baseAddress,
                                           EUSCI_B_SPI_changeMasterClockParam *param);
 
+extern void EUSCI_B_SPI_changeSpiFrequency (uint32_t desiredSpiClock);
+
 //*****************************************************************************
 //
 //! \brief Initializes the SPI Slave block.

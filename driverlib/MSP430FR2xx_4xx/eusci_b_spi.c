@@ -129,6 +129,26 @@ void EUSCI_B_SPI_initSlave (uint16_t baseAddress, EUSCI_B_SPI_initSlaveParam *pa
                                             );
 }
 
+void EUSCI_B_SPI_changeSpiFrequency (
+    uint32_t desiredSpiClock
+    )
+{
+    // Configure SPI
+    EUSCI_B_SPI_initMasterParam config = {0};
+    config.selectClockSource = EUSCI_B_SPI_CLOCKSOURCE_SMCLK;
+    config.clockSourceFrequency = 15958016; //CS_getSMCLK(); //15958016
+    config.desiredSpiClock = desiredSpiClock;//5000000;
+    config.msbFirst = EUSCI_B_SPI_MSB_FIRST;
+    config.clockPhase = EUSCI_B_SPI_PHASE_DATA_CHANGED_ONFIRST_CAPTURED_ON_NEXT;
+    config.clockPolarity = EUSCI_B_SPI_CLOCKPOLARITY_INACTIVITY_HIGH;
+    config.spiMode = EUSCI_B_SPI_3PIN;
+
+    EUSCI_B_SPI_initMaster(EUSCI_B1_BASE, &config);
+
+    EUSCI_B_SPI_enable(EUSCI_B1_BASE);
+}
+
+
 void EUSCI_B_SPI_changeClockPhasePolarity (uint16_t baseAddress,
     uint16_t clockPhase,
     uint16_t clockPolarity
