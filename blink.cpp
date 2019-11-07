@@ -217,6 +217,7 @@ void taskActive(void* pvParameters) {
 
             uint8_t cnt = 0;
             long long runningLat = 0, runningLong = 0;
+            uint8_t month = 0, day = 0, minute = 0, hour = 0;
 
             char tmpStr[] = "---\r\n";
             printStr(tmpStr);
@@ -258,12 +259,24 @@ void taskActive(void* pvParameters) {
 //                vTaskDelay(pdMS_TO_TICKS(10));
 //            }
 //            longitude = (long)(runningLong / 3);
-
+            while(!(month = myGPS.getMonth())) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+            while(!(day = myGPS.getDay())) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+            while(!(hour = myGPS.getHour())) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+            // Convert hour from UTC to EST
+            hour = (hour + 19) % 24;
+            while(!(minute = myGPS.getMinute())) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
             latitude = myGPS.getLatitude();
             longitude = myGPS.getLongitude();
             // Put GPS into inactive mode until we communicate with it again
             myGPS.setInactive();
-            (void)siv;
 
             updateTargetCoord();
 
@@ -285,31 +298,14 @@ void taskActive(void* pvParameters) {
             printStr(strBuf);
             printStr(crlf);
 
-            sPaint_time.Sec = sPaint_time.Sec + 1;
-            if (sPaint_time.Sec == 60) {
-                sPaint_time.Min = sPaint_time.Min + 1;
-                sPaint_time.Sec = 0;
-                if (sPaint_time.Min == 60) {
-                    sPaint_time.Hour = sPaint_time.Hour + 1;
-                    sPaint_time.Min = 0;
-                    if (sPaint_time.Hour == 24) {
-                        sPaint_time.Hour = 0;
-                        sPaint_time.Min = 0;
-                        sPaint_time.Sec = 0;
-                    }
-                }
-            }
-
-            Paint_DrawTime(5, 175, sPaint_time.Hour, sPaint_time.Sec, &Font20,
+            Paint_DrawTime(5, 175, hour, minute, &Font20,
                        WHITE, BLACK);
-            Paint_DrawDate(115, 175, sPaint_time.Sec % 12, sPaint_time.Sec % 30,
+            Paint_DrawDate(115, 175, month, day,
                         &Font20, WHITE, BLACK);
             Paint_DrawDistance(125, 20, (int)trunc(distance));
             Paint_DrawTemp(140, 55, temp);
             // Paint_DrawTemp(140, 85, sPaint_time.Sec); // reserved to show battery charge level (Reach goal)
             Paint_DrawLatLon(10, 125, latitude, longitude); // 1422775600, -1837408800
-            Paint_DrawDate(115, 175, sPaint_time.Sec % 12, sPaint_time.Sec%30, &Font20,
-                        WHITE, BLACK);
 
             Paint_ClearWindows(10, 10, 120, 120, WHITE);
             Paint_DrawCircle(65, 65, 55, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
