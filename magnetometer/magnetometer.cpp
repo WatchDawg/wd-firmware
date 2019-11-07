@@ -146,7 +146,7 @@ void mag_initSPI() {
     EUSCI_B_SPI_initMasterParam config = {0};
     config.selectClockSource = EUSCI_B_SPI_CLOCKSOURCE_SMCLK;
     config.clockSourceFrequency = CS_getSMCLK();
-    config.desiredSpiClock = SPI_CLOCK_HZ;
+    config.desiredSpiClock = 5000000;
     config.msbFirst = EUSCI_B_SPI_MSB_FIRST;
     config.clockPhase = EUSCI_B_SPI_PHASE_DATA_CHANGED_ONFIRST_CAPTURED_ON_NEXT;
     config.clockPolarity = EUSCI_B_SPI_CLOCKPOLARITY_INACTIVITY_HIGH;
@@ -200,7 +200,7 @@ int16_t mag_getTemp() {
     receiveDataHigh = mag_readReg(SPI_READ_MASK | TEMP_OUT_H);
 
     temp = ((int16_t)((uint16_t)(receiveDataHigh << 8) | receiveDataLow));
-    return temp/8; // spec says 8 LSB/ deg C
+    return 25 + (temp/8); // spec says 8 LSB/ deg C; 25 is zero point
 }
 
 /* apparently itoa is not a standard C function

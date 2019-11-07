@@ -165,7 +165,20 @@ void display_init(display_t* disp, io_pin_t mosi, io_pin_t sclk, io_pin_t cs,
     disp->mode = mode;
     disp->full = (uint8_t *) malloc((width / 8) * height);
 
-    display_init_spi(disp);
+    // Configure CS1 as output pin
+    gpio_write(disp->pins.cs, 0);
+    GPIO_setAsOutputPin(disp->pins.cs.port, disp->pins.cs.pin);
+
+    // Configure DC as output pin
+    gpio_write(disp->pins.dc, 0);
+    GPIO_setAsOutputPin(disp->pins.dc.port, disp->pins.dc.pin);
+
+    // Configure RST as output pin
+    gpio_write(disp->pins.rst, 1);
+    GPIO_setAsOutputPin(disp->pins.rst.port, disp->pins.rst.pin);
+
+    // Configure EPD busy as input pin
+    GPIO_setAsInputPin(disp->pins.busy.port, disp->pins.busy.pin);
 
     // Performs full refresh and clears the screen
     disp->mode = EPD_1IN54_FULL;
