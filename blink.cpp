@@ -16,7 +16,7 @@
 
 #define REQ_SIV                5
 #define AVG_MEAS_CNT           5
-#define TARGET_COORD_THRESHOLD 10
+#define TARGET_COORD_THRESHOLD 20
 
 SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
 SemaphoreHandle_t xReceiveSemaphore; // used to signal when to start receiving/storing user's coordinate list
@@ -206,8 +206,12 @@ void taskActive(void* pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 
-    configASSERT(myGPS.enableAllGNSS());
-    configASSERT(myGPS.saveConfiguration());
+    while (!myGPS.enableAllGNSS()) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    while (!myGPS.saveConfiguration()) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
 
     PAINT_TIME sPaint_time;
     sPaint_time.Hour = 3;
@@ -297,6 +301,10 @@ void taskActive(void* pvParameters) {
             printStr(crlf);
 
             itoa((long int)trunc(distance), strBuf, 10);
+            printStr(strBuf);
+            printStr(crlf);
+
+            itoa((long int)((target_coord_ptr - coords) / 2), strBuf, 10);
             printStr(strBuf);
             printStr(crlf);
 
