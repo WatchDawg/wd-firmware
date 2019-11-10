@@ -14,6 +14,8 @@
 #define PROGRAM_MSG_STOP 0xFF
 #define PROGRAM_MSP_ACK 0x41 // 'A'
 
+#define REQ_SIV                5
+#define AVG_MEAS_CNT           5
 #define TARGET_COORD_THRESHOLD 10
 
 SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
@@ -26,7 +28,7 @@ SemaphoreHandle_t xSPISemaphore = NULL;
 int32_t num_coords = 3;
 int32_t coords[256] = {422925750, -837166570, 422916720, -837166310, 422916910, -837150770};
 int32_t* target_coord_ptr = coords;
-int32_t* end_coord_ptr = coords + 2;
+int32_t* end_coord_ptr = coords + 6;
 
 long double distance = 0;
 int32_t gps_heading = 0;
@@ -122,11 +124,7 @@ void printStr(char* str) {
 }
 
 void taskTest(void* pvParameters) {
-    volatile i = 0;
-    for(;;) {
-        i++;
-        vTaskDelay(pdMS_TO_TICKS(1000000));
-    }
+    vTaskSuspend(NULL);
 }
 
 void taskPeriodic(void* pvParameters) {
@@ -238,27 +236,27 @@ void taskActive(void* pvParameters) {
             // Wake up GPS by sending a UART message
             // Loop until we get a nonzero value for each measurement
 //            siv = myGPS.getSIV();
-//            while(siv < 6) {
+//            while(siv < REQ_SIV) {
 //                vTaskDelay(pdMS_TO_TICKS(10));
 //                siv = myGPS.getSIV();
 //            }
-//            while(!(latitude = myGPS.getLatitude()) || cnt < 3) {
+//            while(!(latitude = myGPS.getLatitude()) || cnt < AVG_MEAS_CNT) {
 //                if (latitude) {
 //                    runningLat += latitude;
 //                    cnt++;
 //                }
 //                vTaskDelay(pdMS_TO_TICKS(10));
 //            }
-//            latitude = (long)(runningLat / 3);
+//            latitude = (long)(runningLat / AVG_MEAS_CNT);
 //            cnt = 0;
-//            while(!(longitude = myGPS.getLongitude()) || cnt < 3) {
+//            while(!(longitude = myGPS.getLongitude()) || cnt < AVG_MEAS_CNT) {
 //                if (longitude) {
 //                    runningLong += longitude;
 //                    cnt++;
 //                }
 //                vTaskDelay(pdMS_TO_TICKS(10));
 //            }
-//            longitude = (long)(runningLong / 3);
+//            longitude = (long)(runningLong / AVG_MEAS_CNT);
             while(!(month = myGPS.getMonth())) {
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
