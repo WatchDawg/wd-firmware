@@ -271,6 +271,8 @@ public:
 
 	bool setInactive(uint16_t maxWait = 1000); //Sets the GPS to Inactive (Hardware Backup) mode
 
+	bool enableAllGNSS(uint16_t maxWait = 1000); //Enables all available GNSS systems (GPS, GLONASS, Galileo)
+
 //	void enableDebugging(HardwareSerial &debugPort); //Given a port to print to, enable debug messages
 //	void disableDebugging(void);					  //Turn off debug statements
 //	void debugPrint(char *message);					  //Safely print debug statements

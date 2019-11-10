@@ -1889,3 +1889,55 @@ bool SFE_UBLOX_GPS::setInactive(uint16_t maxWait) {
 
     return (sendCommand(packetCfg, maxWait));
 }
+
+bool SFE_UBLOX_GPS::enableAllGNSS(uint16_t maxWait) {
+    packetCfg.cls = UBX_CLASS_CFG;
+    packetCfg.id = 0x3E;
+    packetCfg.len = 60; // 60 max length of return
+    packetCfg.startingSpot = 0;
+    for (uint16_t x = 0; x < MAX_PAYLOAD_SIZE; x++)
+        packetCfg.payload[x] = 0;
+    // Payload copied from payload used by U-Center
+    packetCfg.payload[1] = 0x20;
+    packetCfg.payload[2] = 0x20;
+    packetCfg.payload[3] = 0x07;
+    packetCfg.payload[5] = 0x08;
+    packetCfg.payload[6] = 0x10;
+    packetCfg.payload[8] = 0x01;
+    packetCfg.payload[10] = 0x01;
+    packetCfg.payload[11] = 0x01;
+    packetCfg.payload[12] = 0x01;
+    packetCfg.payload[13] = 0x01;
+    packetCfg.payload[14] = 0x03;
+    packetCfg.payload[16] = 0x01;
+    packetCfg.payload[18] = 0x01;
+    packetCfg.payload[19] = 0x01;
+    packetCfg.payload[20] = 0x02;
+    packetCfg.payload[21] = 0x04;
+    packetCfg.payload[22] = 0x08;
+    packetCfg.payload[24] = 0x01;
+    packetCfg.payload[26] = 0x01;
+    packetCfg.payload[27] = 0x01;
+    packetCfg.payload[28] = 0x03;
+    packetCfg.payload[29] = 0x08;
+    packetCfg.payload[30] = 0x10;
+    packetCfg.payload[34] = 0x01;
+    packetCfg.payload[35] = 0x01;
+    packetCfg.payload[36] = 0x04;
+    packetCfg.payload[38] = 0x08;
+    packetCfg.payload[42] = 0x01;
+    packetCfg.payload[43] = 0x03;
+    packetCfg.payload[44] = 0x05;
+    packetCfg.payload[46] = 0x03;
+    packetCfg.payload[48] = 0x01;
+    packetCfg.payload[50] = 0x01;
+    packetCfg.payload[51] = 0x05;
+    packetCfg.payload[52] = 0x06;
+    packetCfg.payload[53] = 0x08;
+    packetCfg.payload[54] = 0x0E;
+    packetCfg.payload[56] = 0x01;
+    packetCfg.payload[58] = 0x01;
+    packetCfg.payload[59] = 0x01;
+
+    return (sendCommand(packetCfg, maxWait));
+}

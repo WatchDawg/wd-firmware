@@ -205,6 +205,10 @@ void taskActive(void* pvParameters) {
     while (!myGPS.begin(Serial1)) {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
+
+    configASSERT(myGPS.enableAllGNSS());
+    configASSERT(myGPS.saveConfiguration());
+
     PAINT_TIME sPaint_time;
     sPaint_time.Hour = 3;
     sPaint_time.Min = 34;
