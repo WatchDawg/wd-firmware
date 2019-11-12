@@ -16,7 +16,7 @@
 
 #define REQ_SIV                5
 #define AVG_MEAS_CNT           5
-#define TARGET_COORD_THRESHOLD 20
+#define TARGET_COORD_THRESHOLD 30
 
 SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
 SemaphoreHandle_t xReceiveSemaphore; // used to signal when to start receiving/storing user's coordinate list
@@ -223,7 +223,7 @@ void taskActive(void* pvParameters) {
 
             uint8_t cnt = 0;
             long long runningLat = 0, runningLong = 0;
-            uint8_t month = 0, day = 0, minute = 0, hour = 0;
+            int8_t month = 0, day = 0, minute = 0, hour = 0;
 
             char tmpStr[] = "---\r\n";
             printStr(tmpStr);
@@ -275,7 +275,12 @@ void taskActive(void* pvParameters) {
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
             // Convert hour from UTC to EST
+            if ((hour - 5) < 0) {
+                --day;
+            }
             hour = (hour + 19) % 24;
+
+
             while(!(minute = myGPS.getMinute())) {
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
@@ -319,7 +324,7 @@ void taskActive(void* pvParameters) {
 
             Paint_ClearWindows(10, 10, 120, 120, WHITE);
             Paint_DrawCircle(65, 65, 55, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
-            Paint_DrawArrowd(dir_heading);
+            Paint_DrawArrowd(360 - dir_heading);
             Paint_DrawNorth(360 - mag_heading);
 
             while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE)

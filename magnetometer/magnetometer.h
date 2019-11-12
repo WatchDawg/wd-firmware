@@ -10,6 +10,27 @@
 #include "driverlib.h"
 #include "msp430fr2476.h"
 
+/* I2C NOTES
+ * CS must be tied high to use I2C
+ * SDO tied low -> Slave Addr[1] is 0
+ */
+
+/* UCB0 I2C */
+#define I2C_CS_PORT GPIO_PORT_P4
+#define I2C_CS_PIN GPIO_PIN2
+#define I2C_SCL_PORT GPIO_PORT_P1
+#define I2C_SCL_PIN GPIO_PIN3
+#define I2C_SDA_PORT GPIO_PORT_P1
+#define I2C_SDA_PIN GPIO_PIN2
+#define I2C_BASE_ADDR EUSCI_B0_BASE
+
+#define I2C_MAG_ADDR 0x1C
+#define I2C_MAG_ADDR_READ 0x01
+
+#define I2C_TRANSMIT_MODE EUSCI_B_I2C_TRANSMIT_MODE
+#define I2C_RECEIVE_MODE EUSCI_B_I2C_RECEIVE_MODE
+
+/* UCB1 SPI */
 #define INTERRUPT_FLAG_REG UCB1IFG
 #define SPI_CS_PORT GPIO_PORT_P4
 #define SPI_CS_PIN GPIO_PIN2
@@ -21,6 +42,7 @@
 #define SPI_MISO_PIN GPIO_PIN6
 #define SPI_BASE_ADDR EUSCI_B1_BASE
 
+/* UCB0 SPI */
 //#define INTERRUPT_FLAG_REG UCB0IFG
 //#define SPI_CS_PORT GPIO_PORT_P4
 //#define SPI_CS_PIN GPIO_PIN2
@@ -86,6 +108,7 @@ void mag_calibrationStep();
 void mag_exitCalibration();
 void mag_calibrate();
 void mag_initMag();
+void mag_initI2C();
 void mag_initSPI();
 void mag_init();
 int16_t mag_getHeading();
@@ -96,7 +119,7 @@ and thus there is no port for the MSP430 */
 // implementation was taken from an E2E post
 void itoa(long int value, char* result, int base);
 
-/* debug functions that use the USB0 backchannel */
+///* debug functions that use the USB0 backchannel */
 uint8_t DEBUG_MAG_INIT();
 void DEBUG_MAG_PRINT_STRING(char* str);
 void DEBUG_MAG_PRINT_NEWLINE(); // prints windows newline <CRLF>

@@ -1,35 +1,78 @@
 #include "magnetometer.h"
 
+int16_t min (int16_t a, int16_t b) {
+    return a < b ? a : b;
+}
+
+int16_t max (int16_t a, int16_t b) {
+    return a > b ? a : b;
+}
+
 void mag_writeReg(uint8_t addr, uint8_t data) {
-    GPIO_setOutputLowOnPin(SPI_CS_PORT, SPI_CS_PIN);
-    EUSCI_B_SPI_transmitData(SPI_BASE_ADDR, addr);
-    while(EUSCI_B_SPI_isBusy(SPI_BASE_ADDR) == EUSCI_B_SPI_BUSY);
-    EUSCI_B_SPI_transmitData(SPI_BASE_ADDR, data);
-    while(EUSCI_B_SPI_isBusy(SPI_BASE_ADDR) == EUSCI_B_SPI_BUSY);
-    GPIO_setOutputHighOnPin(SPI_CS_PORT, SPI_CS_PIN);
+	UCB0CTLW1 = UCASTP_1;
+	UCB0TBCNT = 0x0001;
+	UCB0CTL1  &= ~UCSWRST;
+	UCB0CTL1 |= UCTXSTT + UCTR;		// Start i2c write operation
+	//write the address
+	while(!(UCB0IFG & UCTXIFG0));
+	UCB0TXBUF = addr;
+
+	//write the data
+	while(!(UCB0IFG & UCTXIFG0));
+	//UCB0TXBUF = TxData[0];
+	UCB0TXBUF = data;
+	while(!(UCB0IFG & UCTXIFG0));
+
+	UCB0CTL1 |= UCTXSTP;
+	while (!(UCB0IFG & UCSTPIFG)); 	// Ensure stop condition got sent
+	UCB0CTL1  |= UCSWRST;
+
+    __delay_cycles(1000);
+
+    // UCB0CTL1  &= ~UCSWRST;
+    // EUSCI_B_I2C_masterSendMultiByteStart(I2C_BASE_ADDR, addr);
+    // EUSCI_B_I2C_masterSendMultiByteNext(I2C_BASE_ADDR, data);
+    // EUSCI_B_I2C_masterSendMultiByteStop(I2C_BASE_ADDR);
+    // UCB0CTL1  |= UCSWRST;
 }
 
 uint8_t mag_readReg(uint8_t addr) {
-	uint8_t data = 0;
+    uint8_t data;
 
-    GPIO_setOutputLowOnPin(SPI_CS_PORT, SPI_CS_PIN);
-    EUSCI_B_SPI_transmitData(SPI_BASE_ADDR, addr);
-    while(EUSCI_B_SPI_isBusy(SPI_BASE_ADDR) == EUSCI_B_SPI_BUSY);
-    //while(!(INTERRUPT_FLAG_REG&UCRXIFG0));
-    data = EUSCI_B_SPI_receiveData(SPI_BASE_ADDR);
-    EUSCI_B_SPI_transmitData(SPI_BASE_ADDR, SPI_READ_MASK);
-    while(EUSCI_B_SPI_isBusy(SPI_BASE_ADDR) == EUSCI_B_SPI_BUSY);
-    //while(!(INTERRUPT_FLAG_REG&UCRXIFG0));
-    data = EUSCI_B_SPI_receiveData(SPI_BASE_ADDR);
-    GPIO_setOutputHighOnPin(SPI_CS_PORT, SPI_CS_PIN);
-    return data;
+	UCB0CTLW1 = UCASTP_1;
+	UCB0TBCNT = 0x0001;
+	UCB0CTL1  &= ~UCSWRST;
+	UCB0CTL1 |= UCTXSTT + UCTR;		// Start i2c write operation
+
+	while(!(UCB0IFG & UCTXIFG0));
+	UCB0TXBUF = addr;
+
+	while(!(UCB0IFG & UCBCNTIFG));
+	UCB0CTL1 &= ~UCTR; 				// I2C read operation
+	UCB0CTL1 |= UCTXSTT; 			// Repeated start
+
+	while(!(UCB0IFG & UCRXIFG0));
+	data = UCB0RXBUF;
+
+	UCB0CTLW0 |= UCTXSTP; 			// Send stop after next RX
+	while(!(UCB0IFG & UCRXIFG0));	// Receive BIP8
+	while(!(UCB0IFG & UCSTPIFG));   // Ensure stop condition got sent
+	UCB0CTL1  |= UCSWRST;
+
+    UCB0TXBUF = 0;
+    UCB0RXBUF = 0;
+    UCB0IFG &= ~(UCSTPIFG | UCRXIFG0 | UCTXIFG0);
+
+    __delay_cycles(1000);
+
+	return data;
 }
 
 int16_t mag_readAxis(uint8_t axis) {
-    volatile uint8_t requestDataLow = SPI_READ_MASK | 0x28;
-    volatile uint8_t requestDataHigh = SPI_READ_MASK | 0x29;
-    volatile uint8_t receiveDataLow = 0;
-    volatile uint8_t receiveDataHigh = 0;
+    volatile uint8_t requestDataLow = 0x28;
+    volatile uint8_t requestDataHigh = 0x29;
+    volatile uint16_t receiveDataLow = 0;
+    volatile uint16_t receiveDataHigh = 0;
     volatile int16_t data = 0x0000;
 
     switch(axis) {
@@ -49,57 +92,45 @@ int16_t mag_readAxis(uint8_t axis) {
             break;
     }
     // GET LOW BITS
-    receiveDataLow = mag_readReg(SPI_READ_MASK | requestDataLow);
+    receiveDataLow = mag_readReg(requestDataLow);
 
     // GET HIGH BITS
-    receiveDataHigh = mag_readReg(SPI_READ_MASK | requestDataHigh);
+    receiveDataHigh = mag_readReg(requestDataHigh) << 8;
 
-    data = ((int16_t)((uint16_t)(receiveDataHigh << 8) | receiveDataLow));
+    data = (int16_t)(receiveDataHigh | receiveDataLow);
+
     return data;
 }
 
 void mag_setSingleShotMode() {
 	mag_writeReg(0x22, 0x01);
+    __delay_cycles(40000);
 }
 
 void mag_calibrationStep() {
+    mag_setSingleShotMode();
     int16_t x = mag_readAxis('x');
     int16_t y = mag_readAxis('y');
-    mag_setSingleShotMode();
 
-    // TODO: find better way of doing this
-    volatile unsigned i = 0;
-    for(i = 0; i < 8000; ++i) { }
 
-    if(x > calData.maxX) calData.maxX = x;
-    if(x < calData.minX) calData.minX = x;
+    calData.minX = min(calData.minX, x);
+    calData.minY = min(calData.minY, y);
 
-    if(y > calData.maxY) calData.maxY = y;
-    if(y < calData.minY) calData.minY = y;
-}
-
-void mag_exitCalibration() {
-    calData.offsetX = (calData.minX+calData.maxX)/2;
-    calData.offsetY = (calData.minY+calData.maxY)/2;
-
-    calData.deltaX = (calData.maxX-calData.minX)/2;
-    calData.deltaY = (calData.maxY-calData.minY)/2;
-    calData.deltaAvg = (calData.deltaX + calData.deltaY)/2;
-    calData.scaleX = (float)(calData.deltaAvg) / (float)(calData.deltaX);
-    calData.scaleY = (float)(calData.deltaAvg) / (float)(calData.deltaY);	
+    calData.maxX = max(calData.maxX, x);
+    calData.maxY = max(calData.maxY, y);
 }
 
 void mag_calibrate() {
-    calData.maxX = -2048;
-    calData.minX = 0;
-    calData.maxY = -2048;
-    calData.minY = 0;
+    calData.minX = INT16_MAX;
+    calData.minY = INT16_MAX;
+
+    calData.maxX = INT16_MIN;
+    calData.maxY = INT16_MIN;
     uint32_t i = 0;
-    while(i < 4000) {
+    while(i < 1000) {
         mag_calibrationStep();
         ++i;
     }
-    mag_exitCalibration();
 }
 
 void mag_initMag() {
@@ -108,6 +139,41 @@ void mag_initMag() {
 	mag_writeReg(0x21, 0x00);
 	mag_writeReg(0x22, 0x01);
 	mag_writeReg(0x23, 0x0C);
+}
+
+void mag_initI2C() {
+    GPIO_setAsPeripheralModuleFunctionOutputPin(
+        I2C_SCL_PORT,
+        I2C_SCL_PIN,
+        GPIO_PRIMARY_MODULE_FUNCTION
+    );
+
+    GPIO_setAsPeripheralModuleFunctionOutputPin(
+        I2C_SDA_PORT,
+        I2C_SDA_PIN,
+        GPIO_PRIMARY_MODULE_FUNCTION
+    );
+
+    GPIO_setAsOutputPin( I2C_CS_PORT, I2C_CS_PIN );
+    GPIO_setOutputHighOnPin( I2C_CS_PORT, I2C_CS_PIN );
+
+    EUSCI_B_I2C_initMasterParam param = {0};
+    param.selectClockSource = EUSCI_B_I2C_CLOCKSOURCE_SMCLK;
+    param.i2cClk = CS_getSMCLK();
+    param.dataRate = EUSCI_B_I2C_SET_DATA_RATE_400KBPS;
+    param.byteCounterThreshold = 1;
+    param.autoSTOPGeneration = EUSCI_B_I2C_SET_BYTECOUNT_THRESHOLD_FLAG;
+
+    EUSCI_B_I2C_initMaster(I2C_BASE_ADDR, &param);
+
+    EUSCI_B_I2C_setSlaveAddress(I2C_BASE_ADDR, I2C_MAG_ADDR);
+
+    // EUSCI_B_I2C_setMode(I2C_BASE_ADDR, I2C_TRANSMIT_MODE);
+
+//    EUSCI_B_I2C_clearInterrupt(I2C_BASE_ADDR, UCTXIE + EUSCI_B_I2C_RECEIVE_INTERRUPT0);
+//    EUSCI_B_I2C_enableInterrupt(I2C_BASE_ADDR, UCTXIE + EUSCI_B_I2C_RECEIVE_INTERRUPT0);
+
+    //EUSCI_B_I2C_enable(I2C_BASE_ADDR);
 }
 
 void mag_initSPI() {
@@ -158,48 +224,49 @@ void mag_initSPI() {
 }
 
 void mag_init() {
-	mag_initSPI();
+	mag_initI2C();
 	mag_initMag();
 	mag_calibrate();
 }
 
+
 int16_t mag_getHeading() {
-    volatile int16_t corrected = 0;
+    mag_setSingleShotMode();
     volatile int16_t x = mag_readAxis('x');
     volatile int16_t y = mag_readAxis('y');
-    mag_setSingleShotMode();
+    
 
-//    volatile int16_t x_corrected = (x-calData.offsetX)/calData.scaleX;
-//    volatile int16_t y_corrected = (y-calData.offsetY)/calData.scaleY;
+    calData.minX = min(calData.minX, x);
+    calData.minY = min(calData.minY, y);
 
-    long double x_ldbl = (x-calData.offsetX)/calData.scaleX;
-    long double y_ldbl = (y-calData.offsetY)/calData.scaleY;
+    calData.maxX = max(calData.maxX, x);
+    calData.maxY = max(calData.maxY, y);
 
-    volatile long double corrected_ldbl = 180 * (atan2l(y_ldbl, x_ldbl))/M_PI;
-//    corrected = 180 * ((_IQ12toF(_IQ12atan2(_IQ12(y_corrected),_IQ12(x_corrected))))/M_PI);
-//    if(corrected < 0) {
-//        corrected += 360;
-//    }
-//    return corrected;
-    if(corrected_ldbl < 0) {
-        corrected_ldbl += 360;
+    volatile int16_t x_corrected = x - ((calData.minX + calData.maxX) / 2);
+    volatile int16_t y_corrected = y - ((calData.minY + calData.maxY) / 2);
+
+    volatile int16_t result = 180 * (atan2(y_corrected, x_corrected) / M_PI);
+    if(result < 0) {
+        result += 360;
     }
-    corrected = corrected_ldbl+0.5;
-    return corrected;
+
+    return result;
 }
+
 
 int16_t mag_getTemp() {
     volatile int16_t temp;
-    volatile uint8_t receiveDataLow = 0;
-    volatile uint8_t receiveDataHigh = 0;
+    volatile uint16_t receiveDataLow = 0;
+    volatile uint16_t receiveDataHigh = 0;
 
     // GET LOW BITS
-    receiveDataLow = mag_readReg(SPI_READ_MASK | TEMP_OUT_L);
+    receiveDataLow = mag_readReg(TEMP_OUT_L);
 
     // GET HIGH BITS
-    receiveDataHigh = mag_readReg(SPI_READ_MASK | TEMP_OUT_H);
+    receiveDataHigh = mag_readReg(TEMP_OUT_H) << 8;
 
-    temp = ((int16_t)((uint16_t)(receiveDataHigh << 8) | receiveDataLow));
+
+    temp = (int16_t)(receiveDataHigh | receiveDataLow);
     return 25 + (temp/8); // spec says 8 LSB/ deg C; 25 is zero point
 }
 
@@ -229,7 +296,7 @@ void itoa(long int value, char* result, int base) {
     }
 }
 
-/* debug functions that use the USB0 backchannel */
+///* debug functions that use the USB0 backchannel */
 uint8_t DEBUG_MAG_INIT() {
 	//Configure UART pins
 	GPIO_setAsPeripheralModuleFunctionInputPin(
@@ -280,10 +347,10 @@ void DEBUG_MAG_PRINT_STRING(char* str) {
     EUSCI_A_UART_transmitData(DEBUG_UART_BASE_ADDR, ' ');
     EUSCI_A_UART_transmitData(DEBUG_UART_BASE_ADDR, ' ');
     EUSCI_A_UART_transmitData(DEBUG_UART_BASE_ADDR, ' ');
-    EUSCI_A_UART_transmitData(DEBUG_UART_BASE_ADDR, ' ');	
+    EUSCI_A_UART_transmitData(DEBUG_UART_BASE_ADDR, ' ');
 }
 
 void DEBUG_MAG_PRINT_NEWLINE() {
-    EUSCI_A_UART_transmitData(DEBUG_UART_BASE_ADDR, '\r');
-    EUSCI_A_UART_transmitData(DEBUG_UART_BASE_ADDR, '\n');	
+    // EUSCI_A_UART_transmitData(DEBUG_UART_BASE_ADDR, '\r');
+    EUSCI_A_UART_transmitData(DEBUG_UART_BASE_ADDR, '\n');
 }
