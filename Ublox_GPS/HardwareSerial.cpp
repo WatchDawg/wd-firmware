@@ -335,6 +335,7 @@ HardwareSerial::operator bool() {
 }
 
 extern SemaphoreHandle_t xReceiveSemaphore;
+extern TaskHandle_t receiveHandle;
 
 void uart_rx_isr(uint16_t offset)
 {
@@ -352,6 +353,7 @@ void uart_rx_isr(uint16_t offset)
 	if(offset == DEBUG_UART_MODULE_OFFSET) {
         if(c == PROGRAM_MSG_START) {
             xSemaphoreGiveFromISR(xReceiveSemaphore, NULL);
+            vTaskResume(receiveHandle);
         }
 	}
 }

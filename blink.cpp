@@ -22,6 +22,10 @@ SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display dat
 SemaphoreHandle_t xReceiveSemaphore; // used to signal when to start receiving/storing user's coordinate list
 SemaphoreHandle_t xSPISemaphore = NULL;
 
+TaskHandle_t activeHandle;
+TaskHandle_t receiveHandle;
+
+
 // [0] = number of coordinates, [1...256] = data
 //int32_t num_coords = 3;
 //int32_t coords[256] = {422923200, -837135440, 422923200, -837149320, 422911760, -837159110};
@@ -43,7 +47,7 @@ extern "C"{
 
 void vApplicationIdleHook( void )
 {
-    __bis_SR_register( LPM4_bits + GIE );
+    __bis_SR_register( LPM3_bits + GIE );
     __no_operation();
 }
 
@@ -116,10 +120,11 @@ void taskTest(void* pvParameters) {
 }
 
 void taskPeriodic(void* pvParameters) {
-    for(;;) {
-        vTaskDelay(pdMS_TO_TICKS(5000));
-        xSemaphoreGive(xActiveSemaphore);
-    }
+    vTaskSuspend(NULL);
+//    for(;;) {
+//        vTaskDelay(pdMS_TO_TICKS(5000));
+//        xSemaphoreGive(xActiveSemaphore);
+//    }
 }
 
 SFE_UBLOX_GPS myGPS;
@@ -291,6 +296,8 @@ void taskActive(void* pvParameters) {
             display_draw_image(disp);
             xSemaphoreGive(xSPISemaphore);
         }
+        RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
+        vTaskSuspend(activeHandle);
     }
 }
 
@@ -352,6 +359,7 @@ void taskReceiveData(void* pvParameters) {
 
             while(!(xSemaphoreTake( xReceiveSemaphore, ( TickType_t ) 10 ) == pdTRUE));
         }
+        vTaskSuspend(receiveHandle);
     }
 }
 
@@ -370,8 +378,15 @@ void taskFullRefresh(void* pvParameters) {
 
 
 void taskInit(void* pvParameters) {
+    // initialize Magnetometer
     mag_init();
 
+    // initialize Real-Time Clock
+    RTC_init(RTC_BASE, 16384, RTC_CLOCKPREDIVIDER_10);
+    RTC_clearInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT_FLAG);
+    RTC_enableInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT);
+
+    // initialize Epaper
     disp = (display_t*)malloc(sizeof(display_t));
     uint8_t* Full_Image;
     display_init(disp, (io_pin_t){GPIO_PORT_P3, GPIO_PIN2}, // mosi
@@ -393,9 +408,11 @@ void taskInit(void* pvParameters) {
     Paint_DrawOutline();
     display_draw_image(disp);
 
+    // enable GPS and Backchannel UARTs
     Serial.begin(9600);
     Serial1.begin(9600);
 
+    // create semaphores for taskActive, taskReceive, and the Epaper
     xActiveSemaphore = xSemaphoreCreateBinary();
     xReceiveSemaphore = xSemaphoreCreateBinary();
     xSPISemaphore = xSemaphoreCreateBinary();
@@ -409,18 +426,24 @@ void taskInit(void* pvParameters) {
 
     //updateTargetCoord(422925670, -837149970);
 
-    xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-
     /* FOR BREADBOARD BUTTON  */
     GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);
     GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
     GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
     GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
 
+    xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 2, &receiveHandle);
     xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
     xTaskCreate(taskTest, "taskTest", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
-    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
+    xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE * 4, NULL, 1, &activeHandle);
     xTaskCreate(taskFullRefresh, "FullRefresh", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+
+    vTaskSuspend(receiveHandle);
+    vTaskSuspend(activeHandle);
+
+    RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
+    __bis_SR_register( LPM3_bits + GIE);
+    __no_operation();
 
     vTaskSuspend(NULL);
 }
@@ -441,16 +464,27 @@ void main(void) {
 
 //******************************************************************************
 //
-//This is the PORT1_VECTOR interrupt vector service routine
+// RTC and PORT1_VECTOR interrupt vector service routine
 //
 //******************************************************************************
 #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#pragma vector=RTC_VECTOR
 #pragma vector=PORT1_VECTOR
 __interrupt
 #elif defined(__GNUC__)
+__attribute__((interrupt(RTC_VECTOR)))
 __attribute__((interrupt(PORT1_VECTOR)))
 #endif
-void P1_ISR (void) {
-    xSemaphoreGiveFromISR(xActiveSemaphore, NULL);
+void RTC_ISR (void) {
+    RTC_stop(RTC_BASE);
+    RTC_clearInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT_FLAG);
     GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+
+    xSemaphoreGiveFromISR(xActiveSemaphore, NULL);
+    vTaskResume(activeHandle);
+
+    __bic_SR_register( LPM3_bits); // bit clear LPM3 bits
+    __bis_SR_register( GIE ); // bit set interrupt enable
+    __low_power_mode_off_on_exit();
 }
+

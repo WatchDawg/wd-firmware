@@ -28,12 +28,6 @@ void mag_writeReg(uint8_t addr, uint8_t data) {
 	UCB0CTL1  |= UCSWRST;
 
     __delay_cycles(1000);
-
-    // UCB0CTL1  &= ~UCSWRST;
-    // EUSCI_B_I2C_masterSendMultiByteStart(I2C_BASE_ADDR, addr);
-    // EUSCI_B_I2C_masterSendMultiByteNext(I2C_BASE_ADDR, data);
-    // EUSCI_B_I2C_masterSendMultiByteStop(I2C_BASE_ADDR);
-    // UCB0CTL1  |= UCSWRST;
 }
 
 uint8_t mag_readReg(uint8_t addr) {
@@ -104,7 +98,7 @@ int16_t mag_readAxis(uint8_t axis) {
 
 void mag_setSingleShotMode() {
 	mag_writeReg(0x22, 0x01);
-    __delay_cycles(40000);
+    __delay_cycles(80000);
 }
 
 void mag_calibrationStep() {
@@ -127,7 +121,7 @@ void mag_calibrate() {
     calData.maxX = INT16_MIN;
     calData.maxY = INT16_MIN;
     uint32_t i = 0;
-    while(i < 1000) {
+    while(i < 1500) {
         mag_calibrationStep();
         ++i;
     }
@@ -167,13 +161,6 @@ void mag_initI2C() {
     EUSCI_B_I2C_initMaster(I2C_BASE_ADDR, &param);
 
     EUSCI_B_I2C_setSlaveAddress(I2C_BASE_ADDR, I2C_MAG_ADDR);
-
-    // EUSCI_B_I2C_setMode(I2C_BASE_ADDR, I2C_TRANSMIT_MODE);
-
-//    EUSCI_B_I2C_clearInterrupt(I2C_BASE_ADDR, UCTXIE + EUSCI_B_I2C_RECEIVE_INTERRUPT0);
-//    EUSCI_B_I2C_enableInterrupt(I2C_BASE_ADDR, UCTXIE + EUSCI_B_I2C_RECEIVE_INTERRUPT0);
-
-    //EUSCI_B_I2C_enable(I2C_BASE_ADDR);
 }
 
 void mag_initSPI() {
@@ -202,12 +189,6 @@ void mag_initSPI() {
         GPIO_PRIMARY_MODULE_FUNCTION
     );
 
-    /*
-     * Disable the GPIO power-on default high-impedance mode to activate
-     * previously configured port settings
-     */
-    // PMM_unlockLPM5();
-
     // Configure SPI
     EUSCI_B_SPI_initMasterParam config = {0};
     config.selectClockSource = EUSCI_B_SPI_CLOCKSOURCE_SMCLK;
@@ -235,6 +216,9 @@ int16_t mag_getHeading() {
     volatile int16_t x = mag_readAxis('x');
     volatile int16_t y = mag_readAxis('y');
     
+    // set to single shot (but without delay)
+    mag_writeReg(0x22, 0x01);
+
 
     calData.minX = min(calData.minX, x);
     calData.minY = min(calData.minY, y);
