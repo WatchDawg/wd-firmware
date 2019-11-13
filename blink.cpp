@@ -91,18 +91,6 @@ static void prvSetupHardware( void ) {
     /* Stop Watchdog timer. */
     WDT_A_hold( __MSP430_BASEADDRESS_WDT_A__ );
 
-    /* Set all GPIO pins to output and low. */
-//    GPIO_setOutputLowOnPin( GPIO_PORT_P1, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7 );
-//    GPIO_setOutputLowOnPin( GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7 );
-//    GPIO_setOutputLowOnPin( GPIO_PORT_P3, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7 );
-//    GPIO_setOutputLowOnPin( GPIO_PORT_P4, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7 );
-//    GPIO_setOutputLowOnPin( GPIO_PORT_PJ, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7 | GPIO_PIN8 | GPIO_PIN9 | GPIO_PIN10 | GPIO_PIN11 | GPIO_PIN12 | GPIO_PIN13 | GPIO_PIN14 | GPIO_PIN15 );
-//    GPIO_setAsOutputPin( GPIO_PORT_P1, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7 );
-//    GPIO_setAsOutputPin( GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7 );
-//    GPIO_setAsOutputPin( GPIO_PORT_P3, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7 );
-//    GPIO_setAsOutputPin( GPIO_PORT_P4, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7 );
-//    GPIO_setAsOutputPin( GPIO_PORT_PJ, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN4 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7 | GPIO_PIN8 | GPIO_PIN9 | GPIO_PIN10 | GPIO_PIN11 | GPIO_PIN12 | GPIO_PIN13 | GPIO_PIN14 | GPIO_PIN15 );
-
     // Change DCO clock freq to 16MHz
     CS_initFLLSettle(16000, 487);
 
@@ -138,37 +126,6 @@ SFE_UBLOX_GPS myGPS;
 
 long latitude, longitude, altitude;
 uint8_t siv;
-//uint8_t SIV;
-//uint16_t protocolVersion;
-//volatile uint8_t pVH = 0, pVL = 0;
-
-//long double factorial(unsigned int n) {
-//    unsigned int ret = n--;
-//    for (; n > 1; n--) {
-//        ret *= n;
-//    }
-//    long double ldRet = ret;
-//    return ldRet;
-//}
-//
-//// Taylor series approximation of cosine
-//long double taylorCos(unsigned int n, long double x) {
-//    long double ret = 1;
-//    bool neg = true;
-//    for (unsigned int i = 2; i <= 2*n; i += 2) {
-//        long double p = 1;
-//        for (unsigned int j = 0; j < i; ++j) {
-//            p *= x;
-//        }
-//        if (neg) {
-//            ret -= p / factorial(i);
-//        } else {
-//            ret += p / factorial(i);
-//        }
-//        neg = !neg;
-//    }
-//    return ret;
-//}
 
 void updateTargetCoord() {
     if (target_coord_ptr == NULL) {
@@ -183,7 +140,7 @@ void updateTargetCoord() {
     long double targetLong = (long double)target_coord_ptr[1] * 0.0001;
     long double x = targetLat - currLat;
     long double y = (targetLong - currLong) * cosl(currLat * (M_PI / 180));
-    //long double y = (targetLong - currLong) * taylorCos(2, currLat * (M_PI / 180));
+
     distance = degLen * sqrtl(x*x + y*y);
 
     if (distance < TARGET_COORD_THRESHOLD) {
@@ -221,9 +178,9 @@ void taskActive(void* pvParameters) {
     for(;;) {
         if(xSemaphoreTake( xActiveSemaphore, ( TickType_t ) 10 ) == pdTRUE ) {
 
-            uint8_t cnt = 0;
-            long long runningLat = 0, runningLong = 0;
-            int8_t month = 0, day = 0, minute = 0, hour = 0;
+            volatile uint8_t cnt = 0;
+            volatile long long runningLat = 0, runningLong = 0;
+            volatile int8_t month = 0, day = 0, minute = 0, hour = 0;
 
             char tmpStr[] = "---\r\n";
             printStr(tmpStr);
@@ -325,10 +282,10 @@ void taskActive(void* pvParameters) {
             Paint_ClearWindows(10, 10, 120, 120, WHITE);
             Paint_DrawCircle(65, 65, 55, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
             Paint_DrawArrowd(360 - dir_heading);
-            Paint_DrawNorth(360 - mag_heading);
+            Paint_DrawNorth(mag_heading);
 
-            while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE)
-                ;
+            while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE);
+
             // EUSCI_B_SPI_changeSpiFrequency (16000000);
             vTaskDelay(pdMS_TO_TICKS(10));
             display_draw_image(disp);
@@ -401,8 +358,7 @@ void taskReceiveData(void* pvParameters) {
 void taskFullRefresh(void* pvParameters) {
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(100000));
-        while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE)
-            ;
+        while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE);
         // EUSCI_B_SPI_changeSpiFrequency (16000000);
         display_fullrefresh(disp);
         Paint_Clear(WHITE);
@@ -415,6 +371,7 @@ void taskFullRefresh(void* pvParameters) {
 
 void taskInit(void* pvParameters) {
     mag_init();
+
     disp = (display_t*)malloc(sizeof(display_t));
     uint8_t* Full_Image;
     display_init(disp, (io_pin_t){GPIO_PORT_P3, GPIO_PIN2}, // mosi
@@ -429,7 +386,6 @@ void taskInit(void* pvParameters) {
 
     vTaskDelay(pdMS_TO_TICKS(500));
 
-    // EUSCI_B_SPI_changeSpiFrequency (5000000);
     display_get_image(disp, &Full_Image);
 
     Paint_NewImage(Full_Image, EPD_1IN54_WIDTH, EPD_1IN54_HEIGHT, 270, WHITE);
@@ -453,11 +409,9 @@ void taskInit(void* pvParameters) {
 
     //updateTargetCoord(422925670, -837149970);
 
-
     xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
-//
-//    /* FOR BREADBOARD BUTTON TEST */
+    /* FOR BREADBOARD BUTTON  */
     GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);
     GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
     GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
@@ -466,18 +420,7 @@ void taskInit(void* pvParameters) {
     xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
     xTaskCreate(taskTest, "taskTest", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
     xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
-    xTaskCreate(taskFullRefresh, "FullRefresh", configMINIMAL_STACK_SIZE,
-                NULL, 2, NULL);
-    //xTaskCreate(taskTest, "taskTest", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
-
-//    TaskStatus_t *pxTaskStatusArray;
-//    volatile UBaseType_t uxArraySize, x;
-//    unsigned long ulTotalRunTime, ulStatsAsPercentage;
-//    uxArraySize = uxTaskGetNumberOfTasks();
-//    pxTaskStatusArray = (TaskStatus_t*)pvPortMalloc( uxArraySize * sizeof( TaskStatus_t ) );
-//    uxArraySize = uxTaskGetSystemState( pxTaskStatusArray,
-//                                     uxArraySize,
-//                                     &ulTotalRunTime );
+    xTaskCreate(taskFullRefresh, "FullRefresh", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
     vTaskSuspend(NULL);
 }

@@ -2,7 +2,9 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
-CG_TOOL_ROOT := /home/patrick/ti/ccs910/ccs/tools/compiler/ti-cgt-msp430_18.12.2.LTS
+SHELL = cmd.exe
+
+CG_TOOL_ROOT := C:/ti/ccs910/ccs/tools/compiler/ti-cgt-msp430_18.12.3.LTS
 
 GEN_OPTS__FLAG := 
 GEN_CMDS__FLAG := 
@@ -57,8 +59,8 @@ $(GEN_CMDS__FLAG) \
 
 -include ../makefile.init
 
-RM := rm -rf
-RMDIR := rm -rf
+RM := DEL /F
+RMDIR := RMDIR /S/Q
 
 # All of the sources participating in the build are defined here
 -include sources.mk
@@ -174,46 +176,46 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXE_OUTPUTS += \
-Blink.out \
+GPSTest.out \
 
 EXE_OUTPUTS__QUOTED += \
-"Blink.out" \
+"GPSTest.out" \
 
 BIN_OUTPUTS += \
-Blink.hex \
+GPSTest.hex \
 
 BIN_OUTPUTS__QUOTED += \
-"Blink.hex" \
+"GPSTest.hex" \
 
 
 # All Target
 all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
-	@$(MAKE) --no-print-directory -Onone "Blink.out"
+	@$(MAKE) --no-print-directory -Onone "GPSTest.out"
 
 # Tool invocations
-Blink.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
+GPSTest.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: MSP430 Linker'
-	"/home/patrick/ti/ccs910/ccs/tools/compiler/ti-cgt-msp430_18.12.2.LTS/bin/cl430" -vmspx --use_hw_mpy=F5 --advice:power=all --advice:hw_config=all --define=__MSP430FR2476__ --define=_FRWP_ENABLE --define=_INFO_FRWP_ENABLE -g --printf_support=nofloat --diag_warning=225 --diag_wrap=off --display_error_number --silicon_errata=CPU21 --silicon_errata=CPU22 --silicon_errata=CPU40 -z -m"Blink.map" --heap_size=7000 --stack_size=160 --cinit_hold_wdt=on -i"/home/patrick/ti/ccs910/ccs/ccs_base/msp430/include" -i"/home/patrick/ti/ccs910/ccs/ccs_base/msp430/lib/FR2xx" -i"/home/patrick/ti/ccs910/ccs/tools/compiler/ti-cgt-msp430_18.12.2.LTS/lib" -i"/home/patrick/ti/ccs910/ccs/tools/compiler/ti-cgt-msp430_18.12.2.LTS/include" --priority --reread_libs --define=_FRWP_ENABLE --define=_INFO_FRWP_ENABLE --diag_wrap=off --display_error_number --warn_sections --xml_link_info="Blink_linkInfo.xml" --use_hw_mpy=F5 --rom_model -o "Blink.out" $(ORDERED_OBJS)
+	"C:/ti/ccs910/ccs/tools/compiler/ti-cgt-msp430_18.12.3.LTS/bin/cl430" -vmspx --use_hw_mpy=F5 --advice:power=all --advice:hw_config=all --define=__MSP430FR2476__ --define=_FRWP_ENABLE --define=_INFO_FRWP_ENABLE -g --printf_support=nofloat --diag_warning=225 --diag_wrap=off --display_error_number --silicon_errata=CPU21 --silicon_errata=CPU22 --silicon_errata=CPU40 -z -m"GPSTest.map" --heap_size=7000 --stack_size=160 --cinit_hold_wdt=on -i"C:/ti/ccs910/ccs/ccs_base/msp430/include" -i"C:/ti/ccs910/ccs/ccs_base/msp430/lib/FR2xx" -i"C:/ti/ccs910/ccs/tools/compiler/ti-cgt-msp430_18.12.3.LTS/lib" -i"C:/ti/ccs910/ccs/tools/compiler/ti-cgt-msp430_18.12.3.LTS/include" --priority --reread_libs --define=_FRWP_ENABLE --define=_INFO_FRWP_ENABLE --diag_wrap=off --display_error_number --warn_sections --xml_link_info="GPSTest_linkInfo.xml" --use_hw_mpy=F5 --rom_model -o "GPSTest.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
-Blink.hex: $(EXE_OUTPUTS)
+GPSTest.hex: $(EXE_OUTPUTS)
 	@echo 'Building files: $(strip $(EXE_OUTPUTS__QUOTED))'
 	@echo 'Invoking: MSP430 Hex Utility'
-	"/home/patrick/ti/ccs910/ccs/tools/compiler/ti-cgt-msp430_18.12.2.LTS/bin/hex430" --memwidth=8 --romwidth=8 -o "Blink.hex" $(EXE_OUTPUTS__QUOTED)
+	"C:/ti/ccs910/ccs/tools/compiler/ti-cgt-msp430_18.12.3.LTS/bin/hex430" --memwidth=8 --romwidth=8 -o "GPSTest.hex" $(EXE_OUTPUTS__QUOTED)
 	@echo 'Finished building: $(strip $(EXE_OUTPUTS__QUOTED))'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(BIN_OUTPUTS__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "blink.obj" "FreeRTOS/croutine.obj" "FreeRTOS/event_groups.obj" "FreeRTOS/list.obj" "FreeRTOS/queue.obj" "FreeRTOS/stream_buffer.obj" "FreeRTOS/tasks.obj" "FreeRTOS/timers.obj" "FreeRTOS/portable/heap_1.obj" "FreeRTOS/portable/port.obj" "FreeRTOS/portable/portext.obj" "Ublox_GPS/HardwareSerial.obj" "Ublox_GPS/Ublox_GPS.obj" "Ublox_GPS/usci_isr_handler.obj" "common/common.obj" "driverlib/MSP430FR2xx_4xx/adc.obj" "driverlib/MSP430FR2xx_4xx/crc.obj" "driverlib/MSP430FR2xx_4xx/cs.obj" "driverlib/MSP430FR2xx_4xx/ecomp.obj" "driverlib/MSP430FR2xx_4xx/eusci_a_spi.obj" "driverlib/MSP430FR2xx_4xx/eusci_a_uart.obj" "driverlib/MSP430FR2xx_4xx/eusci_b_i2c.obj" "driverlib/MSP430FR2xx_4xx/eusci_b_spi.obj" "driverlib/MSP430FR2xx_4xx/framctl.obj" "driverlib/MSP430FR2xx_4xx/gpio.obj" "driverlib/MSP430FR2xx_4xx/icc.obj" "driverlib/MSP430FR2xx_4xx/lcd_e.obj" "driverlib/MSP430FR2xx_4xx/mpy32.obj" "driverlib/MSP430FR2xx_4xx/pmm.obj" "driverlib/MSP430FR2xx_4xx/rtc.obj" "driverlib/MSP430FR2xx_4xx/sac.obj" "driverlib/MSP430FR2xx_4xx/sfr.obj" 
-	-$(RM) "driverlib/MSP430FR2xx_4xx/sysctl.obj" "driverlib/MSP430FR2xx_4xx/tia.obj" "driverlib/MSP430FR2xx_4xx/timer_a.obj" "driverlib/MSP430FR2xx_4xx/timer_b.obj" "driverlib/MSP430FR2xx_4xx/tlv.obj" "driverlib/MSP430FR2xx_4xx/wdt_a.obj" "epaper/GUI_Paint.obj" "epaper/display.obj" "epaper/font20.obj" "magnetometer/magnetometer.obj" 
-	-$(RM) "FreeRTOS/croutine.d" "FreeRTOS/event_groups.d" "FreeRTOS/list.d" "FreeRTOS/queue.d" "FreeRTOS/stream_buffer.d" "FreeRTOS/tasks.d" "FreeRTOS/timers.d" "FreeRTOS/portable/heap_1.d" "FreeRTOS/portable/port.d" "Ublox_GPS/usci_isr_handler.d" "driverlib/MSP430FR2xx_4xx/adc.d" "driverlib/MSP430FR2xx_4xx/crc.d" "driverlib/MSP430FR2xx_4xx/cs.d" "driverlib/MSP430FR2xx_4xx/ecomp.d" "driverlib/MSP430FR2xx_4xx/eusci_a_spi.d" "driverlib/MSP430FR2xx_4xx/eusci_a_uart.d" "driverlib/MSP430FR2xx_4xx/eusci_b_i2c.d" "driverlib/MSP430FR2xx_4xx/eusci_b_spi.d" "driverlib/MSP430FR2xx_4xx/framctl.d" "driverlib/MSP430FR2xx_4xx/gpio.d" "driverlib/MSP430FR2xx_4xx/icc.d" "driverlib/MSP430FR2xx_4xx/lcd_e.d" "driverlib/MSP430FR2xx_4xx/mpy32.d" "driverlib/MSP430FR2xx_4xx/pmm.d" "driverlib/MSP430FR2xx_4xx/rtc.d" "driverlib/MSP430FR2xx_4xx/sac.d" "driverlib/MSP430FR2xx_4xx/sfr.d" "driverlib/MSP430FR2xx_4xx/sysctl.d" "driverlib/MSP430FR2xx_4xx/tia.d" "driverlib/MSP430FR2xx_4xx/timer_a.d" "driverlib/MSP430FR2xx_4xx/timer_b.d" 
-	-$(RM) "driverlib/MSP430FR2xx_4xx/tlv.d" "driverlib/MSP430FR2xx_4xx/wdt_a.d" 
-	-$(RM) "blink.d" "Ublox_GPS/HardwareSerial.d" "Ublox_GPS/Ublox_GPS.d" "common/common.d" "epaper/GUI_Paint.d" "epaper/display.d" "epaper/font20.d" "magnetometer/magnetometer.d" 
-	-$(RM) "FreeRTOS/portable/portext.d" 
+	-$(RM) "blink.obj" "FreeRTOS\croutine.obj" "FreeRTOS\event_groups.obj" "FreeRTOS\list.obj" "FreeRTOS\queue.obj" "FreeRTOS\stream_buffer.obj" "FreeRTOS\tasks.obj" "FreeRTOS\timers.obj" "FreeRTOS\portable\heap_1.obj" "FreeRTOS\portable\port.obj" "FreeRTOS\portable\portext.obj" "Ublox_GPS\HardwareSerial.obj" "Ublox_GPS\Ublox_GPS.obj" "Ublox_GPS\usci_isr_handler.obj" "common\common.obj" "driverlib\MSP430FR2xx_4xx\adc.obj" "driverlib\MSP430FR2xx_4xx\crc.obj" "driverlib\MSP430FR2xx_4xx\cs.obj" "driverlib\MSP430FR2xx_4xx\ecomp.obj" "driverlib\MSP430FR2xx_4xx\eusci_a_spi.obj" "driverlib\MSP430FR2xx_4xx\eusci_a_uart.obj" "driverlib\MSP430FR2xx_4xx\eusci_b_i2c.obj" "driverlib\MSP430FR2xx_4xx\eusci_b_spi.obj" "driverlib\MSP430FR2xx_4xx\framctl.obj" "driverlib\MSP430FR2xx_4xx\gpio.obj" "driverlib\MSP430FR2xx_4xx\icc.obj" "driverlib\MSP430FR2xx_4xx\lcd_e.obj" "driverlib\MSP430FR2xx_4xx\mpy32.obj" "driverlib\MSP430FR2xx_4xx\pmm.obj" "driverlib\MSP430FR2xx_4xx\rtc.obj" "driverlib\MSP430FR2xx_4xx\sac.obj" "driverlib\MSP430FR2xx_4xx\sfr.obj" 
+	-$(RM) "driverlib\MSP430FR2xx_4xx\sysctl.obj" "driverlib\MSP430FR2xx_4xx\tia.obj" "driverlib\MSP430FR2xx_4xx\timer_a.obj" "driverlib\MSP430FR2xx_4xx\timer_b.obj" "driverlib\MSP430FR2xx_4xx\tlv.obj" "driverlib\MSP430FR2xx_4xx\wdt_a.obj" "epaper\GUI_Paint.obj" "epaper\display.obj" "epaper\font20.obj" "magnetometer\magnetometer.obj" 
+	-$(RM) "FreeRTOS\croutine.d" "FreeRTOS\event_groups.d" "FreeRTOS\list.d" "FreeRTOS\queue.d" "FreeRTOS\stream_buffer.d" "FreeRTOS\tasks.d" "FreeRTOS\timers.d" "FreeRTOS\portable\heap_1.d" "FreeRTOS\portable\port.d" "Ublox_GPS\usci_isr_handler.d" "driverlib\MSP430FR2xx_4xx\adc.d" "driverlib\MSP430FR2xx_4xx\crc.d" "driverlib\MSP430FR2xx_4xx\cs.d" "driverlib\MSP430FR2xx_4xx\ecomp.d" "driverlib\MSP430FR2xx_4xx\eusci_a_spi.d" "driverlib\MSP430FR2xx_4xx\eusci_a_uart.d" "driverlib\MSP430FR2xx_4xx\eusci_b_i2c.d" "driverlib\MSP430FR2xx_4xx\eusci_b_spi.d" "driverlib\MSP430FR2xx_4xx\framctl.d" "driverlib\MSP430FR2xx_4xx\gpio.d" "driverlib\MSP430FR2xx_4xx\icc.d" "driverlib\MSP430FR2xx_4xx\lcd_e.d" "driverlib\MSP430FR2xx_4xx\mpy32.d" "driverlib\MSP430FR2xx_4xx\pmm.d" "driverlib\MSP430FR2xx_4xx\rtc.d" "driverlib\MSP430FR2xx_4xx\sac.d" "driverlib\MSP430FR2xx_4xx\sfr.d" "driverlib\MSP430FR2xx_4xx\sysctl.d" "driverlib\MSP430FR2xx_4xx\tia.d" "driverlib\MSP430FR2xx_4xx\timer_a.d" "driverlib\MSP430FR2xx_4xx\timer_b.d" 
+	-$(RM) "driverlib\MSP430FR2xx_4xx\tlv.d" "driverlib\MSP430FR2xx_4xx\wdt_a.d" 
+	-$(RM) "blink.d" "Ublox_GPS\HardwareSerial.d" "Ublox_GPS\Ublox_GPS.d" "common\common.d" "epaper\GUI_Paint.d" "epaper\display.d" "epaper\font20.d" "magnetometer\magnetometer.d" 
+	-$(RM) "FreeRTOS\portable\portext.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
