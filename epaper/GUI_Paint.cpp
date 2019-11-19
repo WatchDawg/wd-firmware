@@ -882,3 +882,25 @@ void Paint_DrawNorth(const uint16_t angle_deg) {
     // Draw arrow points
     draw_arrow(arrow_tip_len, padding, center, cos_theta, sin_theta, true);
 }
+
+void Paint_DrawBattery(uint16_t xstart, uint16_t ystart, int battery) {
+    Paint_DrawRectangle(xstart, ystart, xstart+40, ystart+26, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY); //first rect box
+    Paint_DrawRectangle(xstart+40, ystart+8, xstart+50, ystart+26-8, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY); //rect stub at end
+    uint16_t xthresh = 0;
+    if (battery <= 5) {
+        return;
+    }
+    else if (battery <= 25) {
+        xthresh = (xstart+4) + 8;
+    }
+    else if (battery <= 50) {
+        xthresh = (xstart+4) + 16;
+    }
+    else if (battery <= 75) {
+        xthresh = (xstart+4) + 24;
+    }
+    else {
+        xthresh = (xstart+4) + 32;
+    }
+    Paint_DrawRectangle(xstart+4, ystart+4, xthresh, ystart+26-4, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
+}

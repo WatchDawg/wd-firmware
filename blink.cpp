@@ -275,8 +275,9 @@ void taskActive(void* pvParameters) {
                        WHITE, BLACK);
             Paint_DrawDate(115, 175, month, day,
                         &Font20, WHITE, BLACK);
-            Paint_DrawDistance(125, 20, (int)trunc(distance));
-            Paint_DrawTemp(140, 55, temp);
+            Paint_DrawDistance(125+10, 20+35, (int)trunc(distance));
+            Paint_DrawTemp(140-10, 55+35, temp);
+            Paint_DrawBattery(135, 20, 50); //default 50, CHANGE TO ACTUAL VALUE
             // Paint_DrawTemp(140, 85, sPaint_time.Sec); // reserved to show battery charge level (Reach goal)
             Paint_DrawLatLon(10, 125, latitude, longitude); // 1422775600, -1837408800
 
