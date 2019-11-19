@@ -194,6 +194,8 @@ void Paint_DrawCircle(uint16_t X_Center, uint16_t Y_Center, uint16_t Radius, uin
 void Paint_DrawArrowd(const uint16_t angle_deg);
 void Paint_DrawNorth(const uint16_t angle_deg);
 
+void Paint_DrawBattery(uint16_t xstart, uint16_t ystart, int battery);
+
 // //Display string
 void Paint_DrawChar(uint16_t Xstart, uint16_t Ystart, const char Acsii_Char, sFONT* Font, uint16_t Color_Foreground, uint16_t Color_Background);
 void Paint_DrawString_EN(uint16_t Xstart, uint16_t Ystart, const char * pString, sFONT* Font, uint16_t Color_Foreground, uint16_t Color_Background);
