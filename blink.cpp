@@ -121,10 +121,6 @@ void taskTest(void* pvParameters) {
 
 void taskPeriodic(void* pvParameters) {
     vTaskSuspend(NULL);
-//    for(;;) {
-//        vTaskDelay(pdMS_TO_TICKS(5000));
-//        xSemaphoreGive(xActiveSemaphore);
-//    }
 }
 
 SFE_UBLOX_GPS myGPS;
@@ -293,7 +289,21 @@ void taskActive(void* pvParameters) {
 
             // EUSCI_B_SPI_changeSpiFrequency (16000000);
             vTaskDelay(pdMS_TO_TICKS(10));
+
+            // Configure MOSI as output pin
+            GPIO_setAsPeripheralModuleFunctionOutputPin(disp->pins.mosi.port,
+                                                        disp->pins.mosi.pin,
+                                                        GPIO_PRIMARY_MODULE_FUNCTION);
+
+            __delay_cycles(100);
+
+            display_wakeup(disp);
             display_draw_image(disp);
+            display_sleep(disp);
+
+            // Configure MOSI as input pin
+            GPIO_setAsInputPin(disp->pins.mosi.port, disp->pins.mosi.pin);
+
             xSemaphoreGive(xSPISemaphore);
         }
         RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
@@ -367,11 +377,25 @@ void taskFullRefresh(void* pvParameters) {
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(100000));
         while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE);
-        // EUSCI_B_SPI_changeSpiFrequency (16000000);
+
+        // Configure MOSI as output pin
+        GPIO_setAsPeripheralModuleFunctionOutputPin(disp->pins.mosi.port,
+                                                    disp->pins.mosi.pin,
+                                                    GPIO_PRIMARY_MODULE_FUNCTION);
+
+        __delay_cycles(100);
+
         display_fullrefresh(disp);
         Paint_Clear(WHITE);
         Paint_DrawOutline();
         display_draw_image(disp);
+
+        // put epaper into sleep mode
+        display_sleep(disp);
+
+        // Configure MOSI as input pin
+        GPIO_setAsInputPin(disp->pins.mosi.port, disp->pins.mosi.pin);
+
         xSemaphoreGive(xSPISemaphore);
     }
 }
@@ -411,6 +435,9 @@ void taskInit(void* pvParameters) {
     Paint_Clear(WHITE);
     Paint_DrawOutline();
     display_draw_image(disp);
+
+    // put epaper into sleep mode
+    display_sleep(disp);
 
     // enable GPS and Backchannel UARTs
     Serial.begin(9600);
