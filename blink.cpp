@@ -160,9 +160,9 @@ void updateTargetCoord() {
 }
 
 void taskActive(void* pvParameters) {
-    while (!myGPS.begin(Serial1)) {
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
+//    while (!myGPS.begin(Serial1)) {
+//        vTaskDelay(pdMS_TO_TICKS(100));
+//    }
 
     while (!myGPS.enableAllGNSS()) {
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -186,9 +186,8 @@ void taskActive(void* pvParameters) {
             char tmpStr[] = "---\r\n";
             printStr(tmpStr);
 
-            while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE)
-                ;
-            // EUSCI_B_SPI_changeSpiFrequency (5000000);
+            while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE);
+
             mag_heading = mag_getHeading();
             temp = mag_getTemp();
             xSemaphoreGive(xSPISemaphore);
@@ -223,6 +222,7 @@ void taskActive(void* pvParameters) {
 //                vTaskDelay(pdMS_TO_TICKS(10));
 //            }
 //            longitude = (long)(runningLong / AVG_MEAS_CNT);
+
             while(!(month = myGPS.getMonth())) {
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
@@ -439,6 +439,8 @@ void taskInit(void* pvParameters) {
 
     // put epaper into sleep mode
     display_sleep(disp);
+    // Configure MOSI as input pin
+    GPIO_setAsInputPin(disp->pins.mosi.port, disp->pins.mosi.pin);
 
     // enable GPS and Backchannel UARTs
     Serial.begin(9600);
@@ -472,6 +474,12 @@ void taskInit(void* pvParameters) {
 
     vTaskSuspend(receiveHandle);
     vTaskSuspend(activeHandle);
+
+
+    while (!myGPS.begin(Serial1)) {
+        __delay_cycles(100);
+    }
+    myGPS.setInactive();
 
     RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
     __bis_SR_register( LPM3_bits + GIE);
