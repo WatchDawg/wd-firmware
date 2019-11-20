@@ -25,7 +25,6 @@ SemaphoreHandle_t xSPISemaphore = NULL;
 TaskHandle_t activeHandle;
 TaskHandle_t receiveHandle;
 
-
 // [0] = number of coordinates, [1...256] = data
 //int32_t num_coords = 3;
 //int32_t coords[256] = {422923200, -837135440, 422923200, -837149320, 422911760, -837159110};
@@ -171,11 +170,6 @@ void taskActive(void* pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 
-    PAINT_TIME sPaint_time;
-    sPaint_time.Hour = 3;
-    sPaint_time.Min = 34;
-    sPaint_time.Sec = 56;
-
     for(;;) {
         if(xSemaphoreTake( xActiveSemaphore, ( TickType_t ) 10 ) == pdTRUE ) {
 
@@ -186,11 +180,8 @@ void taskActive(void* pvParameters) {
             char tmpStr[] = "---\r\n";
             printStr(tmpStr);
 
-            while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE);
-
             mag_heading = mag_getHeading();
             temp = mag_getTemp();
-            xSemaphoreGive(xSPISemaphore);
 
             char strHeading[8];
             itoa((int)mag_heading, strHeading, 10);
@@ -271,15 +262,12 @@ void taskActive(void* pvParameters) {
             printStr(strBuf);
             printStr(crlf);
 
-            Paint_DrawTime(5, 175, hour, minute, &Font20,
-                       WHITE, BLACK);
-            Paint_DrawDate(115, 175, month, day,
-                        &Font20, WHITE, BLACK);
+            Paint_DrawTime(5, 175, hour, minute, &Font20, WHITE, BLACK);
+            Paint_DrawDate(115, 175, month, day, &Font20, WHITE, BLACK);
             Paint_DrawDistance(125, 20+20, (int)trunc(distance));
             Paint_DrawTemp(140, 55+15, temp);
             Paint_DrawBattery(162, 5, 90); //default 90, CHANGE TO ACTUAL VALUE
-            // Paint_DrawTemp(140, 85, sPaint_time.Sec); // reserved to show battery charge level (Reach goal)
-            Paint_DrawLatLon(10, 125, latitude, longitude); // 1422775600, -1837408800
+            Paint_DrawLatLon(10, 125, latitude, longitude);
 
             Paint_ClearWindows(10, 10, 120, 120, WHITE);
             Paint_DrawCircle(65, 65, 55, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
@@ -287,24 +275,17 @@ void taskActive(void* pvParameters) {
             Paint_DrawNorth(mag_heading);
 
             while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE);
-
-            // EUSCI_B_SPI_changeSpiFrequency (16000000);
-            vTaskDelay(pdMS_TO_TICKS(10));
-
             // Configure MOSI as output pin
             GPIO_setAsPeripheralModuleFunctionOutputPin(disp->pins.mosi.port,
                                                         disp->pins.mosi.pin,
                                                         GPIO_PRIMARY_MODULE_FUNCTION);
-
             __delay_cycles(100);
-
             display_wakeup(disp);
             display_draw_image(disp);
             display_sleep(disp);
 
             // Configure MOSI as input pin
             GPIO_setAsInputPin(disp->pins.mosi.port, disp->pins.mosi.pin);
-
             xSemaphoreGive(xSPISemaphore);
         }
         RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
@@ -383,7 +364,6 @@ void taskFullRefresh(void* pvParameters) {
         GPIO_setAsPeripheralModuleFunctionOutputPin(disp->pins.mosi.port,
                                                     disp->pins.mosi.pin,
                                                     GPIO_PRIMARY_MODULE_FUNCTION);
-
         __delay_cycles(100);
 
         display_fullrefresh(disp);
@@ -416,14 +396,10 @@ void taskInit(void* pvParameters) {
     uint8_t* Full_Image;
     display_init(disp, (io_pin_t){GPIO_PORT_P3, GPIO_PIN2}, // mosi
                  (io_pin_t){GPIO_PORT_P3, GPIO_PIN5},       // sclk
-                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN7},       // cs
-                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN0},       // dc
-                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN1},       // rst
-                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN2},       // busy
-//                 (io_pin_t){GPIO_PORT_P6, GPIO_PIN2},       // cs
-//                 (io_pin_t){GPIO_PORT_P4, GPIO_PIN7},       // dc
-//                 (io_pin_t){GPIO_PORT_P5, GPIO_PIN0},       // rst
-//                 (io_pin_t){GPIO_PORT_P5, GPIO_PIN1},       // busy
+                 (io_pin_t){GPIO_PORT_P3, GPIO_PIN6},       // cs
+                 (io_pin_t){GPIO_PORT_P6, GPIO_PIN1},       // dc
+                 (io_pin_t){GPIO_PORT_P6, GPIO_PIN2},       // rst
+                 (io_pin_t){GPIO_PORT_P4, GPIO_PIN7},       // busy
                  200,                                       // width
                  200,                                       // height
                  EPD_1IN54_PART); // mode EPD_1IN54_PART
@@ -470,7 +446,7 @@ void taskInit(void* pvParameters) {
     xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
     xTaskCreate(taskTest, "taskTest", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
     xTaskCreate(taskActive, "taskActive", configMINIMAL_STACK_SIZE * 4, NULL, 1, &activeHandle);
-    xTaskCreate(taskFullRefresh, "FullRefresh", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+    xTaskCreate(taskFullRefresh, "FullRefresh", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
     vTaskSuspend(receiveHandle);
     vTaskSuspend(activeHandle);
