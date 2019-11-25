@@ -15,7 +15,7 @@
 #define PROGRAM_MSP_ACK 0x41 // 'A'
 
 #define REQ_SIV                5
-#define AVG_MEAS_CNT           5
+#define AVG_MEAS_CNT           3
 #define TARGET_COORD_THRESHOLD 30
 
 SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
