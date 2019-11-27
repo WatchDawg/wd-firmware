@@ -163,12 +163,15 @@ void taskActive(void* pvParameters) {
 //        vTaskDelay(pdMS_TO_TICKS(100));
 //    }
 
-    while (!myGPS.enableAllGNSS()) {
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
-    while (!myGPS.saveConfiguration()) {
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
+//    while (!myGPS.setUART1Output(COM_TYPE_UBX)) {
+//        vTaskDelay(pdMS_TO_TICKS(100));
+//    }
+//    while (!myGPS.enableAllGNSS()) {
+//        vTaskDelay(pdMS_TO_TICKS(100));
+//    }
+//    while (!myGPS.saveConfiguration()) {
+//        vTaskDelay(pdMS_TO_TICKS(100));
+//    }
 
     for(;;) {
         if(xSemaphoreTake( xActiveSemaphore, ( TickType_t ) 10 ) == pdTRUE ) {
@@ -220,19 +223,19 @@ void taskActive(void* pvParameters) {
             while(!(day = myGPS.getDay())) {
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
-            while(!(hour = myGPS.getHour())) {
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
-            // Convert hour from UTC to EST
-            if ((hour - 5) < 0) {
-                --day;
-            }
-            hour = (hour + 19) % 24;
-
-
-            while(!(minute = myGPS.getMinute())) {
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
+//            while(!(hour = myGPS.getHour())) {
+//                vTaskDelay(pdMS_TO_TICKS(10));
+//            }
+//            // Convert hour from UTC to EST
+//            if ((hour - 5) < 0) {
+//                --day;
+//            }
+//            hour = (hour + 19) % 24;
+//
+//
+//            while(!(minute = myGPS.getMinute())) {
+//                vTaskDelay(pdMS_TO_TICKS(10));
+//            }
             latitude = myGPS.getLatitude();
             longitude = myGPS.getLongitude();
             // Put GPS into inactive mode until we communicate with it again
@@ -287,6 +290,7 @@ void taskActive(void* pvParameters) {
             // Configure MOSI as input pin
             GPIO_setAsInputPin(disp->pins.mosi.port, disp->pins.mosi.pin);
             xSemaphoreGive(xSPISemaphore);
+
         }
         RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
         vTaskSuspend(activeHandle);
@@ -418,9 +422,7 @@ void taskInit(void* pvParameters) {
     // Configure MOSI as input pin
     GPIO_setAsInputPin(disp->pins.mosi.port, disp->pins.mosi.pin);
 
-    // enable GPS and Backchannel UARTs
-    Serial.begin(9600);
-    Serial1.begin(9600);
+
 
     // create semaphores for taskActive, taskReceive, and the Epaper
     xActiveSemaphore = xSemaphoreCreateBinary();
@@ -442,6 +444,23 @@ void taskInit(void* pvParameters) {
     GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
     GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
 
+    // enable GPS and Backchannel UARTs
+    Serial.begin(9600);
+    Serial1.begin(9600);
+    while (!myGPS.begin(Serial1)) {
+        vTaskDelay(pdMS_TO_TICKS(1500));
+    }
+    while (!myGPS.setUART1Output(COM_TYPE_UBX)) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    while (!myGPS.enableAllGNSS()) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    while (!myGPS.saveConfiguration()) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    myGPS.setInactive();
+
     xTaskCreate(taskReceiveData, "taskReceiveData", configMINIMAL_STACK_SIZE, NULL, 2, &receiveHandle);
     xTaskCreate(taskPeriodic, "taskPeriodic", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
     xTaskCreate(taskTest, "taskTest", configMINIMAL_STACK_SIZE * 4, NULL, 1, NULL);
@@ -452,11 +471,6 @@ void taskInit(void* pvParameters) {
     vTaskSuspend(activeHandle);
 
 
-    while (!myGPS.begin(Serial1)) {
-        __delay_cycles(100);
-    }
-    myGPS.setInactive();
-
     RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
     __bis_SR_register( LPM3_bits + GIE);
     __no_operation();
@@ -466,6 +480,9 @@ void taskInit(void* pvParameters) {
 
 
 void main(void) {
+
+    RTC_clearInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT_FLAG);
+
     // Setup hardware
     prvSetupHardware();
     
@@ -494,7 +511,7 @@ __attribute__((interrupt(PORT1_VECTOR)))
 void RTC_ISR (void) {
     RTC_stop(RTC_BASE);
     RTC_clearInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT_FLAG);
-    GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+    //GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
 
     xSemaphoreGiveFromISR(xActiveSemaphore, NULL);
     vTaskResume(activeHandle);

@@ -64,6 +64,7 @@ static void display_wait_on_busy(display_t* disp) {
         }
     }*/
     // vTaskDelay(pdMS_TO_TICKS(ms))delay_ms(200);
+    return;
     busy = gpio_read(disp->pins.busy);
     while (busy == 1) { // LOW: idle, HIGH: busy
         busy = gpio_read(disp->pins.busy);
