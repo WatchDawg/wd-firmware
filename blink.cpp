@@ -18,6 +18,12 @@
 #define AVG_MEAS_CNT           3
 #define TARGET_COORD_THRESHOLD 30
 
+#define ADC_SAMPLES            5
+#define BATT_VOLT_100P         3.75f
+#define BATT_VOLT_75P          3.65f
+#define BATT_VOLT_50P          3.55f
+#define BATT_VOLT_25P          3.50f
+
 SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
 SemaphoreHandle_t xReceiveSemaphore; // used to signal when to start receiving/storing user's coordinate list
 SemaphoreHandle_t xSPISemaphore = NULL;
@@ -194,28 +200,28 @@ void taskActive(void* pvParameters) {
 
             // Wake up GPS by sending a UART message
             // Loop until we get a nonzero value for each measurement
-            siv = myGPS.getSIV();
-            while(siv < REQ_SIV) {
-                vTaskDelay(pdMS_TO_TICKS(10));
-                siv = myGPS.getSIV();
-            }
-            while(!(latitude = myGPS.getLatitude()) || cnt < AVG_MEAS_CNT) {
-                if (latitude) {
-                    runningLat += latitude;
-                    cnt++;
-                }
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
-            latitude = (long)(runningLat / AVG_MEAS_CNT);
-            cnt = 0;
-            while(!(longitude = myGPS.getLongitude()) || cnt < AVG_MEAS_CNT) {
-                if (longitude) {
-                    runningLong += longitude;
-                    cnt++;
-                }
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
-            longitude = (long)(runningLong / AVG_MEAS_CNT);
+//            siv = myGPS.getSIV();
+//            while(siv < REQ_SIV) {
+//                vTaskDelay(pdMS_TO_TICKS(10));
+//                siv = myGPS.getSIV();
+//            }
+//            while(!(latitude = myGPS.getLatitude()) || cnt < AVG_MEAS_CNT) {
+//                if (latitude) {
+//                    runningLat += latitude;
+//                    cnt++;
+//                }
+//                vTaskDelay(pdMS_TO_TICKS(10));
+//            }
+//            latitude = (long)(runningLat / AVG_MEAS_CNT);
+//            cnt = 0;
+//            while(!(longitude = myGPS.getLongitude()) || cnt < AVG_MEAS_CNT) {
+//                if (longitude) {
+//                    runningLong += longitude;
+//                    cnt++;
+//                }
+//                vTaskDelay(pdMS_TO_TICKS(10));
+//            }
+//            longitude = (long)(runningLong / AVG_MEAS_CNT);
 
             while(!(month = myGPS.getMonth())) {
                 vTaskDelay(pdMS_TO_TICKS(10));
@@ -223,21 +229,21 @@ void taskActive(void* pvParameters) {
             while(!(day = myGPS.getDay())) {
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
-            while(!(hour = myGPS.getHour())) {
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
-            // Convert hour from UTC to EST
-            if ((hour - 5) < 0) {
-                --day;
-            }
-            hour = (hour + 19) % 24;
-
-
-            while(!(minute = myGPS.getMinute())) {
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
-//            latitude = myGPS.getLatitude();
-//            longitude = myGPS.getLongitude();
+//            while(!(hour = myGPS.getHour())) {
+//                vTaskDelay(pdMS_TO_TICKS(10));
+//            }
+//            // Convert hour from UTC to EST
+//            if ((hour - 5) < 0) {
+//                --day;
+//            }
+//            hour = (hour + 19) % 24;
+//
+//
+//            while(!(minute = myGPS.getMinute())) {
+//                vTaskDelay(pdMS_TO_TICKS(10));
+//            }
+            latitude = myGPS.getLatitude();
+            longitude = myGPS.getLongitude();
             // Put GPS into inactive mode until we communicate with it again
             myGPS.setInactive();
 
@@ -247,6 +253,37 @@ void taskActive(void* pvParameters) {
             if (dir_heading < 0) {
                 dir_heading += 360;
             }
+
+            int16_t adc_sum = 0;
+            uint8_t adc_cnt = 0;
+            while (adc_cnt < ADC_SAMPLES) {
+                ADC_startConversion(ADC_BASE,
+                                    ADC_SINGLECHANNEL);
+                while (ADC_isBusy(ADC_BASE) == ADC_BUSY);
+                int16_t adc_result = ADC_getResults(ADC_BASE);
+                if (adc_result > 0) {
+                    adc_sum += ADC_getResults(ADC_BASE);
+                    adc_cnt++;
+                }
+            }
+            // (ADC sum / 5) * 3.3 V * 2 / 2^10
+            volatile float batt_volt = ((float)(adc_sum) * 0.00128906f) + 0.55f;
+            (void)batt_volt;
+            volatile int batt_percent = 0;
+            if (batt_volt >= BATT_VOLT_100P) {
+                batt_percent = 100;
+            } else if (batt_volt >= BATT_VOLT_75P) {
+                batt_percent = 75;
+            } else if (batt_volt >= BATT_VOLT_50P) {
+                batt_percent = 50;
+            } else if (batt_volt >= BATT_VOLT_25P) {
+                batt_percent = 25;
+            } else {
+                batt_percent = 0;
+            }
+//            volatile int batt_percent = trunc((((batt_volt - BATT_MIN_VOLT) / (BATT_MAX_VOLT - BATT_MIN_VOLT)) * 100.f) + 0.5f);
+//            batt_percent = (batt_percent < 0) ? 0 : batt_percent;
+//            batt_percent = (batt_percent > 100) ? 100 : batt_percent;
 
             char strBuf[32];
             itoa((long int)gps_heading, strBuf, 10);
@@ -269,7 +306,7 @@ void taskActive(void* pvParameters) {
             Paint_DrawDate(115, 175, month, day, &Font20, WHITE, BLACK);
             Paint_DrawDistance(125, 20+20, (int)trunc(distance));
             Paint_DrawTemp(140, 55+15, temp);
-            Paint_DrawBattery(162, 5, 90); //default 90, CHANGE TO ACTUAL VALUE
+            Paint_DrawBattery(162, 5, batt_percent); //default 90, CHANGE TO ACTUAL VALUE
             Paint_DrawLatLon(10, 125, latitude, longitude);
 
             Paint_ClearWindows(10, 10, 120, 120, WHITE);
@@ -395,6 +432,28 @@ void taskInit(void* pvParameters) {
     RTC_clearInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT_FLAG);
     RTC_enableInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT);
 
+    // initialize ADC for battery level
+    GPIO_setAsPeripheralModuleFunctionInputPin(
+            GPIO_PORT_P1,
+            GPIO_PIN0,
+            GPIO_TERNARY_MODULE_FUNCTION);
+
+    ADC_init(ADC_BASE,
+             ADC_SAMPLEHOLDSOURCE_SC,
+             ADC_CLOCKSOURCE_ADCOSC,
+             ADC_CLOCKDIVIDER_1);
+
+    ADC_enable(ADC_BASE);
+
+    ADC_setupSamplingTimer(ADC_BASE,
+                           ADC_CYCLEHOLD_16_CYCLES,
+                           ADC_MULTIPLESAMPLESDISABLE);
+
+    ADC_configureMemory(ADC_BASE,
+                        ADC_INPUT_A0,
+                        ADC_VREFPOS_AVCC,
+                        ADC_VREFNEG_AVSS);
+
     // initialize Epaper
     disp = (display_t*)malloc(sizeof(display_t));
     uint8_t* Full_Image;
@@ -439,10 +498,10 @@ void taskInit(void* pvParameters) {
     //updateTargetCoord(422925670, -837149970);
 
     /* FOR BREADBOARD BUTTON  */
-    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);
-    GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
-    GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
-    GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
+//    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);
+//    GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+//    GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+//    GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
 
     // enable GPS and Backchannel UARTs
     Serial.begin(9600);
