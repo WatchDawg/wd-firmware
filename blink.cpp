@@ -306,6 +306,13 @@ void taskActive(void* pvParameters) {
             Paint_DrawDate(115, 175, month, day, &Font20, WHITE, BLACK);
             Paint_DrawDistance(125, 20+20, (int)trunc(distance));
             Paint_DrawTemp(140, 55+15, temp);
+            //int path_completion_percent = (int)truncf((((float)(target_coord_ptr - coords) / (float)(num_coords * 2)) * 100.f) + 0.5f);
+            volatile float tmp_f = (float)(target_coord_ptr - coords);
+            tmp_f /= (float)(num_coords * 2);
+            tmp_f *= 100;
+            tmp_f += 0.5;
+            volatile int path_completion_percent = (int)truncf(tmp_f);
+            Paint_DrawCompletion(155, 100, path_completion_percent);
             Paint_DrawBattery(162, 5, batt_percent); //default 90, CHANGE TO ACTUAL VALUE
             Paint_DrawLatLon(10, 125, latitude, longitude);
 

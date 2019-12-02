@@ -714,6 +714,13 @@ void Paint_DrawTemp(uint16_t Xstart, uint16_t Ystart, int temp) {
     Paint_DrawChar(Xstart + Font20.Width * offset + Dx_2, Ystart, 'C', &Font20, BLACK, WHITE);
 }
 
+void Paint_DrawCompletion(uint16_t Xstart, uint16_t Ystart, int percent) {
+    Paint_ClearWindows(Xstart, Ystart, 200, Ystart + Font20.Height, WHITE);
+
+    int offset = Paint_DrawNum(Xstart, Ystart, percent, &Font20, WHITE, BLACK);
+    Paint_DrawChar(Xstart + Font20.Width * offset, Ystart, 'P', &Font20, BLACK, WHITE);
+}
+
 void Paint_DrawLatLon(uint16_t Xstart, uint16_t Ystart, int32_t lat, int32_t lon) {
     Paint_ClearWindows(10, Ystart, 195, Ystart + 18 + Font20.Height, WHITE);
 

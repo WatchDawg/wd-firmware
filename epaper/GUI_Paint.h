@@ -216,6 +216,8 @@ void Paint_DrawDate(uint16_t Xstart, uint16_t Ystart, uint8_t Month, uint8_t Day
 void Paint_DrawDistance(uint16_t Xstart, uint16_t Ystart, int distance);
 // Draws temperature in Celcius
 void Paint_DrawTemp(uint16_t Xstart, uint16_t Ystart, int temp);
+// Draws path completion percentage
+void Paint_DrawCompletion(uint16_t Xstart, uint16_t Ystart, int percent);
 // Draws latitude and longitude
 void Paint_DrawLatLon(uint16_t Xstart, uint16_t Ystart, int32_t lat, int32_t lon);
 
