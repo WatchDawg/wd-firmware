@@ -14,8 +14,8 @@
 #define PROGRAM_MSG_STOP 0xFF
 #define PROGRAM_MSP_ACK 0x41 // 'A'
 
-#define REQ_SIV                5
-#define AVG_MEAS_CNT           3
+#define REQ_SIV                3
+#define AVG_MEAS_CNT           5
 #define TARGET_COORD_THRESHOLD 30
 
 #define ADC_SAMPLES            5
@@ -34,10 +34,11 @@ TaskHandle_t receiveHandle;
 // [0] = number of coordinates, [1...256] = data
 //int32_t num_coords = 3;
 //int32_t coords[256] = {422923200, -837135440, 422923200, -837149320, 422911760, -837159110};
-int32_t num_coords = 3;
-int32_t coords[256] = {422925750, -837166570, 422916720, -837166310, 422916910, -837150770};
+//int32_t coords[256] = {422925750, -837166570, 422916720, -837166310, 422916910, -837150770};
+int32_t num_coords = 2;
+int32_t coords[256] = {422916720, -837166310, 422925750, -837166570};
 int32_t* target_coord_ptr = coords;
-int32_t* end_coord_ptr = coords + 6;
+int32_t* end_coord_ptr = coords + (num_coords * 2);
 
 long double distance = 0;
 int32_t gps_heading = 0;
@@ -135,10 +136,6 @@ long latitude, longitude, altitude;
 uint8_t siv;
 
 void updateTargetCoord() {
-    if (target_coord_ptr == NULL) {
-        return;
-    }
-
     // Calculate Euclidean distance between current and target coordinates
     long double degLen = 110.25;
     long double currLat = (long double)latitude * 0.0001;
@@ -153,7 +150,7 @@ void updateTargetCoord() {
     if (distance < TARGET_COORD_THRESHOLD) {
         target_coord_ptr += 2;
         if (target_coord_ptr == end_coord_ptr) {
-            target_coord_ptr = NULL;
+            target_coord_ptr = coords;
         }
         updateTargetCoord();
     }
