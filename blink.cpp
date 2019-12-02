@@ -45,6 +45,7 @@ int32_t mag_heading = 0;
 int32_t dir_heading = 0;
 int16_t temp = 0;
 display_t* disp;
+const char* cal_msg = "Cal";
 
 #ifdef __cplusplus
 extern "C"{
@@ -431,9 +432,6 @@ void taskFullRefresh(void* pvParameters) {
 
 
 void taskInit(void* pvParameters) {
-    // initialize Magnetometer
-    mag_init();
-
     // initialize Real-Time Clock
     RTC_init(RTC_BASE, 16384, RTC_CLOCKPREDIVIDER_10);
     RTC_clearInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT_FLAG);
@@ -480,15 +478,23 @@ void taskInit(void* pvParameters) {
 
     Paint_NewImage(Full_Image, EPD_1IN54_WIDTH, EPD_1IN54_HEIGHT, 270, WHITE);
     Paint_Clear(WHITE);
-    Paint_DrawOutline();
+    //Paint_DrawOutline();
+    Paint_DrawString_EN(0, 0, cal_msg, &Font20, WHITE, BLACK);
     display_draw_image(disp);
 
     // put epaper into sleep mode
     display_sleep(disp);
+
+    // initialize Magnetometer
+    mag_init();
+
+    display_wakeup(disp);
+    Paint_Clear(WHITE);
+    display_draw_image(disp);
+    display_sleep(disp);
+
     // Configure MOSI as input pin
     GPIO_setAsInputPin(disp->pins.mosi.port, disp->pins.mosi.pin);
-
-
 
     // create semaphores for taskActive, taskReceive, and the Epaper
     xActiveSemaphore = xSemaphoreCreateBinary();
