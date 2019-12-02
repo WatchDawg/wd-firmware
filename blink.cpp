@@ -24,8 +24,8 @@
 #define BATT_VOLT_50P          3.55f
 #define BATT_VOLT_25P          3.50f
 
-SemaphoreHandle_t xActiveSemaphore; // used to signal when to gather/display data
-SemaphoreHandle_t xReceiveSemaphore; // used to signal when to start receiving/storing user's coordinate list
+SemaphoreHandle_t xActiveSemaphore = NULL; // used to signal when to gather/display data
+SemaphoreHandle_t xReceiveSemaphore = NULL; // used to signal when to start receiving/storing user's coordinate list
 SemaphoreHandle_t xSPISemaphore = NULL;
 
 TaskHandle_t activeHandle;
