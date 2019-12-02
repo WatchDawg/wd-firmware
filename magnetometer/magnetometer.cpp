@@ -230,6 +230,7 @@ int16_t mag_getHeading() {
     volatile int16_t y_corrected = y - ((calData.minY + calData.maxY) / 2);
 
     volatile int16_t result = 180 * (atan2(y_corrected, x_corrected) / M_PI);
+    result += 90;
     if(result < 0) {
         result += 360;
     }
