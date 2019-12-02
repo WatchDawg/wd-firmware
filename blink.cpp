@@ -572,11 +572,13 @@ void RTC_ISR (void) {
     RTC_clearInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT_FLAG);
     //GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
 
-    xSemaphoreGiveFromISR(xActiveSemaphore, NULL);
-    vTaskResume(activeHandle);
+    if (xActiveSemaphore) {
+        xSemaphoreGiveFromISR(xActiveSemaphore, NULL);
+        vTaskResume(activeHandle);
 
-    __bic_SR_register( LPM3_bits); // bit clear LPM3 bits
-    __bis_SR_register( GIE ); // bit set interrupt enable
-    __low_power_mode_off_on_exit();
+        __bic_SR_register( LPM3_bits); // bit clear LPM3 bits
+        __bis_SR_register( GIE ); // bit set interrupt enable
+        __low_power_mode_off_on_exit();
+    }
 }
 
