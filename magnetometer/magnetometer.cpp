@@ -9,6 +9,7 @@ int16_t max (int16_t a, int16_t b) {
 }
 
 void mag_writeReg(uint8_t addr, uint8_t data) {
+    __disable_interrupt();
 	UCB0CTLW1 = UCASTP_1;
 	UCB0TBCNT = 0x0001;
 	UCB0CTL1  &= ~UCSWRST;
@@ -28,9 +29,11 @@ void mag_writeReg(uint8_t addr, uint8_t data) {
 	UCB0CTL1  |= UCSWRST;
 
     __delay_cycles(1000);
+    __enable_interrupt();
 }
 
 uint8_t mag_readReg(uint8_t addr) {
+    __disable_interrupt();
     uint8_t data;
 
 	UCB0CTLW1 = UCASTP_1;
@@ -58,6 +61,7 @@ uint8_t mag_readReg(uint8_t addr) {
     UCB0IFG &= ~(UCSTPIFG | UCRXIFG0 | UCTXIFG0);
 
     __delay_cycles(1000);
+    __enable_interrupt();
 
 	return data;
 }
