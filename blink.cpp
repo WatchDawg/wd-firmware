@@ -413,7 +413,7 @@ void taskFullRefresh(void* pvParameters) {
         __delay_cycles(100);
 
         display_fullrefresh(disp);
-        Paint_Clear(WHITE);
+//        Paint_Clear(WHITE);
         Paint_DrawOutline();
         display_draw_image(disp);
 
@@ -487,6 +487,7 @@ void taskInit(void* pvParameters) {
 
     display_wakeup(disp);
     Paint_Clear(WHITE);
+    Paint_DrawOutline();
     display_draw_image(disp);
     display_sleep(disp);
 
@@ -508,10 +509,10 @@ void taskInit(void* pvParameters) {
     //updateTargetCoord(422925670, -837149970);
 
     /* FOR BREADBOARD BUTTON  */
-//    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN0);
-//    GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
-//    GPIO_enableInterrupt(GPIO_PORT_P1, GPIO_PIN0);
-//    GPIO_selectInterruptEdge(GPIO_PORT_P1, GPIO_PIN0, GPIO_LOW_TO_HIGH_TRANSITION);
+    GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P5, GPIO_PIN3);
+    GPIO_clearInterrupt(GPIO_PORT_P5, GPIO_PIN3);
+    GPIO_enableInterrupt(GPIO_PORT_P5, GPIO_PIN3);
+    GPIO_selectInterruptEdge(GPIO_PORT_P5, GPIO_PIN3, GPIO_HIGH_TO_LOW_TRANSITION);
 
     // enable GPS and Backchannel UARTs
     Serial.begin(9600);
@@ -555,7 +556,7 @@ void main(void) {
     // Setup hardware
     prvSetupHardware();
     
-    xTaskCreate(taskInit, "taskInit", 2 * configMINIMAL_STACK_SIZE, NULL, 3, NULL);
+    xTaskCreate(taskInit, "taskInit", 3 * configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 
     // enable global interrupts
     __enable_interrupt();
@@ -571,16 +572,16 @@ void main(void) {
 //******************************************************************************
 #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
 #pragma vector=RTC_VECTOR
-#pragma vector=PORT1_VECTOR
+#pragma vector=PORT5_VECTOR
 __interrupt
 #elif defined(__GNUC__)
 __attribute__((interrupt(RTC_VECTOR)))
-__attribute__((interrupt(PORT1_VECTOR)))
+__attribute__((interrupt(PORT5_VECTOR)))
 #endif
 void RTC_ISR (void) {
     RTC_stop(RTC_BASE);
     RTC_clearInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT_FLAG);
-    //GPIO_clearInterrupt(GPIO_PORT_P1, GPIO_PIN0);
+    GPIO_clearInterrupt(GPIO_PORT_P5, GPIO_PIN3);
 
     if (xActiveSemaphore) {
         xSemaphoreGiveFromISR(xActiveSemaphore, NULL);
