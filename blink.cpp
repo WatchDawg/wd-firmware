@@ -54,7 +54,6 @@ extern "C"{
 
 void vApplicationIdleHook( void )
 {
-    __bis_SR_register( LPM3_bits + GIE );
     __no_operation();
 }
 
@@ -178,164 +177,167 @@ void taskActive(void* pvParameters) {
 //    }
 
     for(;;) {
-        if(xSemaphoreTake( xActiveSemaphore, ( TickType_t ) 10 ) == pdTRUE ) {
+        volatile uint8_t cnt = 0;
+        volatile long long runningLat = 0, runningLong = 0;
+        volatile int8_t month = 0, day = 0, minute = 0, hour = 0;
 
-            volatile uint8_t cnt = 0;
-            volatile long long runningLat = 0, runningLong = 0;
-            volatile int8_t month = 0, day = 0, minute = 0, hour = 0;
+        char tmpStr[] = "---\r\n";
+        printStr(tmpStr);
 
-            char tmpStr[] = "---\r\n";
-            printStr(tmpStr);
+        mag_heading = mag_getHeading();
+        temp = mag_getTemp();
 
-            mag_heading = mag_getHeading();
-            temp = mag_getTemp();
+        char strHeading[8];
+        itoa((int)mag_heading, strHeading, 10);
+        printStr(strHeading);
+        char crlf[] = "\r\n";
+        printStr(crlf);
 
-            char strHeading[8];
-            itoa((int)mag_heading, strHeading, 10);
-            printStr(strHeading);
-            char crlf[] = "\r\n";
-            printStr(crlf);
-
-            // Wake up GPS by sending a UART message
-            // Loop until we get a nonzero value for each measurement
+        // Wake up GPS by sending a UART message
+        // Loop until we get a nonzero value for each measurement
+//        siv = myGPS.getSIV();
+//        while(siv < REQ_SIV) {
+//            vTaskDelay(pdMS_TO_TICKS(10));
 //            siv = myGPS.getSIV();
-//            while(siv < REQ_SIV) {
-//                vTaskDelay(pdMS_TO_TICKS(10));
-//                siv = myGPS.getSIV();
+//        }
+//        while(!(latitude = myGPS.getLatitude()) || cnt < AVG_MEAS_CNT) {
+//            if (latitude) {
+//                runningLat += latitude;
+//                cnt++;
 //            }
-//            while(!(latitude = myGPS.getLatitude()) || cnt < AVG_MEAS_CNT) {
-//                if (latitude) {
-//                    runningLat += latitude;
-//                    cnt++;
-//                }
-//                vTaskDelay(pdMS_TO_TICKS(10));
+//            vTaskDelay(pdMS_TO_TICKS(10));
+//        }
+//        latitude = (long)(runningLat / AVG_MEAS_CNT);
+//        cnt = 0;
+//        while(!(longitude = myGPS.getLongitude()) || cnt < AVG_MEAS_CNT) {
+//            if (longitude) {
+//                runningLong += longitude;
+//                cnt++;
 //            }
-//            latitude = (long)(runningLat / AVG_MEAS_CNT);
-//            cnt = 0;
-//            while(!(longitude = myGPS.getLongitude()) || cnt < AVG_MEAS_CNT) {
-//                if (longitude) {
-//                    runningLong += longitude;
-//                    cnt++;
-//                }
-//                vTaskDelay(pdMS_TO_TICKS(10));
-//            }
-//            longitude = (long)(runningLong / AVG_MEAS_CNT);
+//            vTaskDelay(pdMS_TO_TICKS(10));
+//        }
+//        longitude = (long)(runningLong / AVG_MEAS_CNT);
 
-            while(!(month = myGPS.getMonth())) {
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
-            while(!(day = myGPS.getDay())) {
-                vTaskDelay(pdMS_TO_TICKS(10));
-            }
-//            while(!(hour = myGPS.getHour())) {
-//                vTaskDelay(pdMS_TO_TICKS(10));
-//            }
-//            // Convert hour from UTC to EST
-//            if ((hour - 5) < 0) {
-//                --day;
-//            }
-//            hour = (hour + 19) % 24;
+        while(!(month = myGPS.getMonth())) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        while(!(day = myGPS.getDay())) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+//        while(!(hour = myGPS.getHour())) {
+//            vTaskDelay(pdMS_TO_TICKS(10));
+//        }
+//        // Convert hour from UTC to EST
+//        if ((hour - 5) < 0) {
+//            --day;
+//        }
+//        hour = (hour + 19) % 24;
 //
 //
-//            while(!(minute = myGPS.getMinute())) {
-//                vTaskDelay(pdMS_TO_TICKS(10));
-//            }
-            latitude = myGPS.getLatitude();
-            longitude = myGPS.getLongitude();
-            // Put GPS into inactive mode until we communicate with it again
-            myGPS.setInactive();
+//        while(!(minute = myGPS.getMinute())) {
+//            vTaskDelay(pdMS_TO_TICKS(10));
+//        }
+        latitude = myGPS.getLatitude();
+        longitude = myGPS.getLongitude();
+        // Put GPS into inactive mode until we communicate with it again
+        myGPS.setInactive();
 
-            updateTargetCoord();
+        updateTargetCoord();
 
-            dir_heading = gps_heading - mag_heading;
-            if (dir_heading < 0) {
-                dir_heading += 360;
-            }
+        dir_heading = gps_heading - mag_heading;
+        if (dir_heading < 0) {
+            dir_heading += 360;
+        }
 
-            int16_t adc_sum = 0;
-            uint8_t adc_cnt = 0;
-            while (adc_cnt < ADC_SAMPLES) {
-                ADC_startConversion(ADC_BASE,
-                                    ADC_SINGLECHANNEL);
-                while (ADC_isBusy(ADC_BASE) == ADC_BUSY);
-                int16_t adc_result = ADC_getResults(ADC_BASE);
-                if (adc_result > 0) {
-                    adc_sum += ADC_getResults(ADC_BASE);
-                    adc_cnt++;
-                }
+        int16_t adc_sum = 0;
+        uint8_t adc_cnt = 0;
+        while (adc_cnt < ADC_SAMPLES) {
+            ADC_startConversion(ADC_BASE,
+                                ADC_SINGLECHANNEL);
+            while (ADC_isBusy(ADC_BASE) == ADC_BUSY);
+            int16_t adc_result = ADC_getResults(ADC_BASE);
+            if (adc_result > 0) {
+                adc_sum += ADC_getResults(ADC_BASE);
+                adc_cnt++;
             }
-            // (ADC sum / 5) * 3.3 V * 2 / 2^10
-            volatile float batt_volt = ((float)(adc_sum) * 0.00128906f) + 0.55f;
-            (void)batt_volt;
-            volatile int batt_percent = 0;
-            if (batt_volt >= BATT_VOLT_100P) {
-                batt_percent = 100;
-            } else if (batt_volt >= BATT_VOLT_75P) {
-                batt_percent = 75;
-            } else if (batt_volt >= BATT_VOLT_50P) {
-                batt_percent = 50;
-            } else if (batt_volt >= BATT_VOLT_25P) {
-                batt_percent = 25;
-            } else {
-                batt_percent = 0;
-            }
+        }
+        // (ADC sum / 5) * 3.3 V * 2 / 2^10
+        volatile float batt_volt = ((float)(adc_sum) * 0.00128906f) + 0.55f;
+        (void)batt_volt;
+        volatile int batt_percent = 0;
+        if (batt_volt >= BATT_VOLT_100P) {
+            batt_percent = 100;
+        } else if (batt_volt >= BATT_VOLT_75P) {
+            batt_percent = 75;
+        } else if (batt_volt >= BATT_VOLT_50P) {
+            batt_percent = 50;
+        } else if (batt_volt >= BATT_VOLT_25P) {
+            batt_percent = 25;
+        } else {
+            batt_percent = 0;
+        }
 //            volatile int batt_percent = trunc((((batt_volt - BATT_MIN_VOLT) / (BATT_MAX_VOLT - BATT_MIN_VOLT)) * 100.f) + 0.5f);
 //            batt_percent = (batt_percent < 0) ? 0 : batt_percent;
 //            batt_percent = (batt_percent > 100) ? 100 : batt_percent;
 
-            char strBuf[32];
-            itoa((long int)gps_heading, strBuf, 10);
-            printStr(strBuf);
-            printStr(crlf);
+        char strBuf[32];
+        itoa((long int)gps_heading, strBuf, 10);
+        printStr(strBuf);
+        printStr(crlf);
 
-            itoa((long int)dir_heading, strBuf, 10);
-            printStr(strBuf);
-            printStr(crlf);
+        itoa((long int)dir_heading, strBuf, 10);
+        printStr(strBuf);
+        printStr(crlf);
 
-            itoa((long int)trunc(distance), strBuf, 10);
-            printStr(strBuf);
-            printStr(crlf);
+        itoa((long int)trunc(distance), strBuf, 10);
+        printStr(strBuf);
+        printStr(crlf);
 
-            itoa((long int)((target_coord_ptr - coords) / 2), strBuf, 10);
-            printStr(strBuf);
-            printStr(crlf);
+        itoa((long int)((target_coord_ptr - coords) / 2), strBuf, 10);
+        printStr(strBuf);
+        printStr(crlf);
 
-            Paint_DrawTime(5, 175, hour, minute, &Font20, WHITE, BLACK);
-            Paint_DrawDate(115, 175, month, day, &Font20, WHITE, BLACK);
-            Paint_DrawDistance(125, 20+20, (int)trunc(distance));
-            Paint_DrawTemp(140, 55+15, temp);
-            //int path_completion_percent = (int)truncf((((float)(target_coord_ptr - coords) / (float)(num_coords * 2)) * 100.f) + 0.5f);
-            volatile float tmp_f = (float)(target_coord_ptr - coords);
-            tmp_f /= (float)(num_coords * 2);
-            tmp_f *= 100;
-            tmp_f += 0.5;
-            volatile int path_completion_percent = (int)truncf(tmp_f);
-            Paint_DrawCompletion(155, 100, path_completion_percent);
-            Paint_DrawBattery(162, 5, batt_percent); //default 90, CHANGE TO ACTUAL VALUE
-            Paint_DrawLatLon(10, 125, latitude, longitude);
+        Paint_DrawTime(5, 175, hour, minute, &Font20, WHITE, BLACK);
+        Paint_DrawDate(115, 175, month, day, &Font20, WHITE, BLACK);
+        Paint_DrawDistance(125, 20+20, (int)trunc(distance));
+        Paint_DrawTemp(140, 55+15, temp);
+        //int path_completion_percent = (int)truncf((((float)(target_coord_ptr - coords) / (float)(num_coords * 2)) * 100.f) + 0.5f);
+        volatile float tmp_f = (float)(target_coord_ptr - coords);
+        tmp_f /= (float)(num_coords * 2);
+        tmp_f *= 100;
+        tmp_f += 0.5;
+        volatile int path_completion_percent = (int)truncf(tmp_f);
+        Paint_DrawCompletion(155, 100, path_completion_percent);
+        Paint_DrawBattery(162, 5, batt_percent); //default 90, CHANGE TO ACTUAL VALUE
+        Paint_DrawLatLon(10, 125, latitude, longitude);
 
-            Paint_ClearWindows(10, 10, 120, 120, WHITE);
-            Paint_DrawCircle(65, 65, 55, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
-            Paint_DrawArrowd(360 - dir_heading);
-            Paint_DrawNorth(mag_heading);
+        Paint_ClearWindows(10, 10, 120, 120, WHITE);
+        Paint_DrawCircle(65, 65, 55, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
+        Paint_DrawArrowd(360 - dir_heading);
+        Paint_DrawNorth(mag_heading);
 
-            while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE);
-            // Configure MOSI as output pin
-            GPIO_setAsPeripheralModuleFunctionOutputPin(disp->pins.mosi.port,
-                                                        disp->pins.mosi.pin,
-                                                        GPIO_PRIMARY_MODULE_FUNCTION);
-            __delay_cycles(100);
-            display_wakeup(disp);
-            display_draw_image(disp);
-            display_sleep(disp);
+        while (xSemaphoreTake(xSPISemaphore, (TickType_t)10) == pdFALSE);
+        // Configure MOSI as output pin
+        GPIO_setAsPeripheralModuleFunctionOutputPin(disp->pins.mosi.port,
+                                                    disp->pins.mosi.pin,
+                                                    GPIO_PRIMARY_MODULE_FUNCTION);
+        __delay_cycles(100);
+        display_wakeup(disp);
+        display_draw_image(disp);
+        display_sleep(disp);
 
-            // Configure MOSI as input pin
-            GPIO_setAsInputPin(disp->pins.mosi.port, disp->pins.mosi.pin);
-            xSemaphoreGive(xSPISemaphore);
+        // Configure MOSI as input pin
+        GPIO_setAsInputPin(disp->pins.mosi.port, disp->pins.mosi.pin);
+        xSemaphoreGive(xSPISemaphore);
 
-        }
         RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
-        vTaskSuspend(activeHandle);
+        CS_disableClockRequest(CS_SMCLK);
+        CS_disableClockRequest(CS_MCLK);
+        CS_turnOffSMCLK();
+        Timer_A_stop(TIMER_A0_BASE);
+        __bis_SR_register( LPM3_bits + GIE);
+        __no_operation();
+//        vTaskSuspend(activeHandle);
     }
 }
 
@@ -431,6 +433,7 @@ void taskFullRefresh(void* pvParameters) {
 void taskInit(void* pvParameters) {
     // initialize Real-Time Clock
     RTC_init(RTC_BASE, 16384, RTC_CLOCKPREDIVIDER_10);
+//    RTC_init(RTC_BASE, 9830, RTC_CLOCKPREDIVIDER_100);
     RTC_clearInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT_FLAG);
     RTC_enableInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT);
 
@@ -538,11 +541,20 @@ void taskInit(void* pvParameters) {
     xTaskCreate(taskFullRefresh, "FullRefresh", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
     vTaskSuspend(receiveHandle);
-    vTaskSuspend(activeHandle);
+//    vTaskSuspend(activeHandle);
 
 
+//    __disable_interrupt();
     RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
+    CS_disableClockRequest(CS_SMCLK);
+    CS_disableClockRequest(CS_MCLK);
+    CS_turnOffSMCLK();
+    Timer_A_stop(TIMER_A0_BASE);
+//    Timer_A_disableInterrupt(TIMER_A0_BASE);
+//    Timer_A_clearTimerInterrupt(TIMER_A0_BASE);
+//      taskENTER_CRITICAL();
     __bis_SR_register( LPM3_bits + GIE);
+//    LPM3;
     __no_operation();
 
     vTaskSuspend(NULL);
@@ -579,13 +591,17 @@ __attribute__((interrupt(RTC_VECTOR)))
 __attribute__((interrupt(PORT5_VECTOR)))
 #endif
 void RTC_ISR (void) {
-    RTC_stop(RTC_BASE);
     RTC_clearInterrupt(RTC_BASE, RTC_OVERFLOW_INTERRUPT_FLAG);
     GPIO_clearInterrupt(GPIO_PORT_P5, GPIO_PIN3);
+    vApplicationSetupTimerInterrupt();
+    RTC_stop(RTC_BASE);
+    CS_turnOnSMCLK();
+    CS_enableClockRequest(CS_SMCLK);
+    CS_enableClockRequest(CS_MCLK);
 
     if (xActiveSemaphore) {
-        xSemaphoreGiveFromISR(xActiveSemaphore, NULL);
-        vTaskResume(activeHandle);
+//        xSemaphoreGiveFromISR(xActiveSemaphore, NULL);
+//        vTaskResume(activeHandle);
 
         __bic_SR_register( LPM3_bits); // bit clear LPM3 bits
         __bis_SR_register( GIE ); // bit set interrupt enable
