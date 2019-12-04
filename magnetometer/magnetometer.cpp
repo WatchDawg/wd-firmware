@@ -118,6 +118,18 @@ void mag_calibrationStep() {
     calData.maxY = max(calData.maxY, y);
 }
 
+void mag_exitCalibration() {
+    calData.offsetX = (calData.minX + calData.maxX) / 2;
+    calData.offsetY = (calData.minY + calData.maxY) / 2;
+
+    calData.deltaX = (calData.maxX - calData.minX) / 2;
+    calData.deltaY = (calData.maxY - calData.minY) / 2;
+    calData.deltaAvg = (calData.deltaX + calData.deltaY) / 2;
+
+    calData.scaleX = (float)(calData.deltaAvg) / (float)(calData.deltaX);
+    calData.scaleY = (float)(calData.deltaAvg) / (float)(calData.deltaY);
+}
+
 void mag_calibrate() {
     calData.minX = INT16_MAX;
     calData.minY = INT16_MAX;
@@ -129,6 +141,7 @@ void mag_calibrate() {
         mag_calibrationStep();
         ++i;
     }
+    mag_exitCalibration();
 }
 
 void mag_initMag() {
@@ -224,14 +237,17 @@ int16_t mag_getHeading() {
     mag_writeReg(0x22, 0x01);
 
 
-    calData.minX = min(calData.minX, x);
-    calData.minY = min(calData.minY, y);
+//    calData.minX = min(calData.minX, x);
+//    calData.minY = min(calData.minY, y);
+//
+//    calData.maxX = max(calData.maxX, x);
+//    calData.maxY = max(calData.maxY, y);
+//
+//    volatile int16_t x_corrected = x - ((calData.minX + calData.maxX) / 2);
+//    volatile int16_t y_corrected = y - ((calData.minY + calData.maxY) / 2);
 
-    calData.maxX = max(calData.maxX, x);
-    calData.maxY = max(calData.maxY, y);
-
-    volatile int16_t x_corrected = x - ((calData.minX + calData.maxX) / 2);
-    volatile int16_t y_corrected = y - ((calData.minY + calData.maxY) / 2);
+    volatile int16_t x_corrected = (x - calData.offsetX) / calData.scaleX;
+    volatile int16_t y_corrected = (y - calData.offsetY) / calData.scaleY;
 
     volatile int16_t result = 180 * (atan2(y_corrected, x_corrected) / M_PI);
     result += 90;
