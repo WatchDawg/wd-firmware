@@ -14,8 +14,9 @@
 #define PROGRAM_MSG_STOP 0xFF
 #define PROGRAM_MSP_ACK 0x41 // 'A'
 
-#define REQ_SIV                3
-#define AVG_MEAS_CNT           5
+#define REQ_SIV                4
+#define AVG_MAG_CNT            10
+#define AVG_MEAS_CNT           3
 #define TARGET_COORD_THRESHOLD 30
 
 #define ADC_SAMPLES            5
@@ -37,7 +38,7 @@ TaskHandle_t receiveHandle;
 //int32_t coords[256] = {422923200, -837135440, 422923200, -837149320, 422911760, -837159110};
 //int32_t coords[256] = {422925750, -837166570, 422916720, -837166310, 422916910, -837150770};
 int32_t num_coords = 2;
-int32_t coords[256] = {422916720, -837166310, 422925750, -837166570};
+int32_t coords[128] = {422916720, -837166310, 422925750, -837166570};
 int32_t* target_coord_ptr = coords;
 int32_t* end_coord_ptr = coords + (num_coords * 2);
 
@@ -147,18 +148,18 @@ void updateTargetCoord() {
 
     distance = degLen * sqrtl(x*x + y*y);
 
+    long double heading = atan2l((targetLat - currLat), (targetLong - currLong)) * (180.0 / M_PI);
+    gps_heading = 90 - (heading + 0.5);
+    if (gps_heading < 0) {
+        gps_heading = 360 + gps_heading;
+    }
+
     if (distance < TARGET_COORD_THRESHOLD) {
         target_coord_ptr += 2;
         if (target_coord_ptr == end_coord_ptr) {
             target_coord_ptr = coords;
         }
         updateTargetCoord();
-    }
-
-    long double heading = atan2l((targetLat - currLat), (targetLong - currLong)) * (180.0 / M_PI);
-    gps_heading = 90 - (heading + 0.5);
-    if (gps_heading < 0) {
-        gps_heading = 360 + gps_heading;
     }
 }
 
@@ -185,7 +186,12 @@ void taskActive(void* pvParameters) {
 //        char tmpStr[] = "---\r\n";
 //        printStr(tmpStr);
 
-        mag_heading = mag_getHeading();
+        int32_t mag_sum = 0;
+        while (cnt < AVG_MAG_CNT) {
+            mag_sum += mag_getHeading();
+            cnt++;
+        }
+        mag_heading = (int16_t)(mag_sum / AVG_MAG_CNT);
         temp = mag_getTemp();
 
 //        char strHeading[8];
@@ -196,28 +202,29 @@ void taskActive(void* pvParameters) {
 
         // Wake up GPS by sending a UART message
         // Loop until we get a nonzero value for each measurement
-//        siv = myGPS.getSIV();
-//        while(siv < REQ_SIV) {
-//            vTaskDelay(pdMS_TO_TICKS(10));
-//            siv = myGPS.getSIV();
-//        }
-//        while(!(latitude = myGPS.getLatitude()) || cnt < AVG_MEAS_CNT) {
-//            if (latitude) {
-//                runningLat += latitude;
-//                cnt++;
-//            }
-//            vTaskDelay(pdMS_TO_TICKS(10));
-//        }
-//        latitude = (long)(runningLat / AVG_MEAS_CNT);
-//        cnt = 0;
-//        while(!(longitude = myGPS.getLongitude()) || cnt < AVG_MEAS_CNT) {
-//            if (longitude) {
-//                runningLong += longitude;
-//                cnt++;
-//            }
-//            vTaskDelay(pdMS_TO_TICKS(10));
-//        }
-//        longitude = (long)(runningLong / AVG_MEAS_CNT);
+        siv = myGPS.getSIV();
+        while(siv < REQ_SIV) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+            siv = myGPS.getSIV();
+        }
+        cnt = 0;
+        while(!(latitude = myGPS.getLatitude()) || cnt < AVG_MEAS_CNT) {
+            if (latitude) {
+                runningLat += latitude;
+                cnt++;
+            }
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        latitude = (long)(runningLat / AVG_MEAS_CNT);
+        cnt = 0;
+        while(!(longitude = myGPS.getLongitude()) || cnt < AVG_MEAS_CNT) {
+            if (longitude) {
+                runningLong += longitude;
+                cnt++;
+            }
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        longitude = (long)(runningLong / AVG_MEAS_CNT);
 
         while(!(month = myGPS.getMonth())) {
             vTaskDelay(pdMS_TO_TICKS(10));
@@ -225,19 +232,22 @@ void taskActive(void* pvParameters) {
         while(!(day = myGPS.getDay())) {
             vTaskDelay(pdMS_TO_TICKS(10));
         }
-//        while(!(hour = myGPS.getHour())) {
-//            vTaskDelay(pdMS_TO_TICKS(10));
-//        }
-//        // Convert hour from UTC to EST
-//        if ((hour - 5) < 0) {
-//            --day;
-//        }
-//        hour = (hour + 19) % 24;
-//
-//
-//        while(!(minute = myGPS.getMinute())) {
-//            vTaskDelay(pdMS_TO_TICKS(10));
-//        }
+        cnt = 0;
+        while(!(hour = myGPS.getHour()) && cnt < AVG_MEAS_CNT) {
+            cnt++;
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        // Convert hour from UTC to EST
+        if ((hour - 5) < 0) {
+            --day;
+        }
+        hour = (hour + 19) % 24;
+
+        cnt = 0;
+        while(!(minute = myGPS.getMinute()) && cnt < AVG_MEAS_CNT) {
+            cnt++;
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
         latitude = myGPS.getLatitude();
         longitude = myGPS.getLongitude();
         // Put GPS into inactive mode until we communicate with it again
