@@ -19,6 +19,7 @@
 #define TARGET_COORD_THRESHOLD 30
 
 #define ADC_SAMPLES            5
+#define BATT_VOLT_110P         4.3f
 #define BATT_VOLT_100P         3.75f
 #define BATT_VOLT_75P          3.65f
 #define BATT_VOLT_50P          3.55f
@@ -115,11 +116,11 @@ static void prvSetupHardware( void ) {
     PMM_unlockLPM5();
 }
 
-void printStr(char* str) {
-    while (*str) {
-        Serial.write(*str++);
-    }
-}
+//void printStr(char* str) {
+//    while (*str) {
+//        Serial.write(*str++);
+//    }
+//}
 
 void taskTest(void* pvParameters) {
     vTaskSuspend(NULL);
@@ -181,17 +182,17 @@ void taskActive(void* pvParameters) {
         volatile long long runningLat = 0, runningLong = 0;
         volatile int8_t month = 0, day = 0, minute = 0, hour = 0;
 
-        char tmpStr[] = "---\r\n";
-        printStr(tmpStr);
+//        char tmpStr[] = "---\r\n";
+//        printStr(tmpStr);
 
         mag_heading = mag_getHeading();
         temp = mag_getTemp();
 
-        char strHeading[8];
-        itoa((int)mag_heading, strHeading, 10);
-        printStr(strHeading);
-        char crlf[] = "\r\n";
-        printStr(crlf);
+//        char strHeading[8];
+//        itoa((int)mag_heading, strHeading, 10);
+//        printStr(strHeading);
+//        char crlf[] = "\r\n";
+//        printStr(crlf);
 
         // Wake up GPS by sending a UART message
         // Loop until we get a nonzero value for each measurement
@@ -265,7 +266,9 @@ void taskActive(void* pvParameters) {
         volatile float batt_volt = ((float)(adc_sum) * 0.00128906f) + 0.55f;
         (void)batt_volt;
         volatile int batt_percent = 0;
-        if (batt_volt >= BATT_VOLT_100P) {
+        if (batt_volt >= BATT_VOLT_110P) {
+            batt_percent = 110;
+        } else if (batt_volt >= BATT_VOLT_100P) {
             batt_percent = 100;
         } else if (batt_volt >= BATT_VOLT_75P) {
             batt_percent = 75;
@@ -280,22 +283,22 @@ void taskActive(void* pvParameters) {
 //            batt_percent = (batt_percent < 0) ? 0 : batt_percent;
 //            batt_percent = (batt_percent > 100) ? 100 : batt_percent;
 
-        char strBuf[32];
-        itoa((long int)gps_heading, strBuf, 10);
-        printStr(strBuf);
-        printStr(crlf);
-
-        itoa((long int)dir_heading, strBuf, 10);
-        printStr(strBuf);
-        printStr(crlf);
-
-        itoa((long int)trunc(distance), strBuf, 10);
-        printStr(strBuf);
-        printStr(crlf);
-
-        itoa((long int)((target_coord_ptr - coords) / 2), strBuf, 10);
-        printStr(strBuf);
-        printStr(crlf);
+//        char strBuf[32];
+//        itoa((long int)gps_heading, strBuf, 10);
+//        printStr(strBuf);
+//        printStr(crlf);
+//
+//        itoa((long int)dir_heading, strBuf, 10);
+//        printStr(strBuf);
+//        printStr(crlf);
+//
+//        itoa((long int)trunc(distance), strBuf, 10);
+//        printStr(strBuf);
+//        printStr(crlf);
+//
+//        itoa((long int)((target_coord_ptr - coords) / 2), strBuf, 10);
+//        printStr(strBuf);
+//        printStr(crlf);
 
         Paint_DrawTime(5, 175, hour, minute, &Font20, WHITE, BLACK);
         Paint_DrawDate(115, 175, month, day, &Font20, WHITE, BLACK);

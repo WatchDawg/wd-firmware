@@ -893,6 +893,7 @@ void Paint_DrawNorth(const uint16_t angle_deg) {
 void Paint_DrawBattery(uint16_t xstart, uint16_t ystart, int battery) {
     Paint_ClearWindows(xstart, ystart, xstart+33, ystart+15, WHITE);
     Paint_DrawRectangle(xstart, ystart, xstart+28, ystart+15, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY); //first rect box
+
     Paint_DrawRectangle(xstart+28, ystart+4, xstart+33, ystart+15-4, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY); //rect stub at end
     uint16_t xthresh = 0;
     if (battery <= 5) {
@@ -907,8 +908,16 @@ void Paint_DrawBattery(uint16_t xstart, uint16_t ystart, int battery) {
     else if (battery <= 75) {
         xthresh = (xstart+4) + 15;
     }
-    else {
+    else if (battery <= 100) {
         xthresh = (xstart+4) + 20;
     }
-    Paint_DrawRectangle(xstart+4, ystart+4, xthresh, ystart+15-3, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
+
+    if (battery <= 100) {
+        Paint_DrawRectangle(xstart+4, ystart+4, xthresh, ystart+15-3, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
+    } else {
+        Paint_DrawLine(xstart+14, ystart+3, xstart+12, ystart+8, BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
+        Paint_DrawLine(xstart+12, ystart+8, xstart+16, ystart+8, BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
+        Paint_DrawLine(xstart+16, ystart+8, xstart+14, ystart+13, BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
+    }
+
 }
