@@ -20,7 +20,7 @@
 #define TARGET_COORD_THRESHOLD 30
 
 #define ADC_SAMPLES            5
-#define BATT_VOLT_110P         4.3f
+#define BATT_VOLT_110P         4.245f
 #define BATT_VOLT_100P         3.75f
 #define BATT_VOLT_75P          3.65f
 #define BATT_VOLT_50P          3.55f
@@ -163,6 +163,38 @@ void updateTargetCoord() {
     }
 }
 
+int get_batt_charge() {
+    int16_t adc_sum = 0;
+    uint8_t adc_cnt = 0;
+    while (adc_cnt < ADC_SAMPLES) {
+        ADC_startConversion(ADC_BASE,
+                            ADC_SINGLECHANNEL);
+        while (ADC_isBusy(ADC_BASE) == ADC_BUSY);
+        int16_t adc_result = ADC_getResults(ADC_BASE);
+        if (adc_result > 0) {
+            adc_sum += ADC_getResults(ADC_BASE);
+            adc_cnt++;
+        }
+    }
+
+    volatile float batt_volt = ((float)(adc_sum) * 0.00128906f) + 0.55f;
+    volatile int batt_percent = 0;
+    if (batt_volt >= BATT_VOLT_110P) {
+        batt_percent = 110;
+    } else if (batt_volt >= BATT_VOLT_100P) {
+        batt_percent = 100;
+    } else if (batt_volt >= BATT_VOLT_75P) {
+        batt_percent = 75;
+    } else if (batt_volt >= BATT_VOLT_50P) {
+        batt_percent = 50;
+    } else if (batt_volt >= BATT_VOLT_25P) {
+        batt_percent = 25;
+    } else {
+        batt_percent = 0;
+    }
+    return batt_percent;
+}
+
 void taskActive(void* pvParameters) {
 //    while (!myGPS.begin(Serial1)) {
 //        vTaskDelay(pdMS_TO_TICKS(100));
@@ -260,55 +292,7 @@ void taskActive(void* pvParameters) {
             dir_heading += 360;
         }
 
-        int16_t adc_sum = 0;
-        uint8_t adc_cnt = 0;
-        while (adc_cnt < ADC_SAMPLES) {
-            ADC_startConversion(ADC_BASE,
-                                ADC_SINGLECHANNEL);
-            while (ADC_isBusy(ADC_BASE) == ADC_BUSY);
-            int16_t adc_result = ADC_getResults(ADC_BASE);
-            if (adc_result > 0) {
-                adc_sum += ADC_getResults(ADC_BASE);
-                adc_cnt++;
-            }
-        }
-        // (ADC sum / 5) * 3.3 V * 2 / 2^10
-        volatile float batt_volt = ((float)(adc_sum) * 0.00128906f) + 0.55f;
-        (void)batt_volt;
-        volatile int batt_percent = 0;
-        if (batt_volt >= BATT_VOLT_110P) {
-            batt_percent = 110;
-        } else if (batt_volt >= BATT_VOLT_100P) {
-            batt_percent = 100;
-        } else if (batt_volt >= BATT_VOLT_75P) {
-            batt_percent = 75;
-        } else if (batt_volt >= BATT_VOLT_50P) {
-            batt_percent = 50;
-        } else if (batt_volt >= BATT_VOLT_25P) {
-            batt_percent = 25;
-        } else {
-            batt_percent = 0;
-        }
-//            volatile int batt_percent = trunc((((batt_volt - BATT_MIN_VOLT) / (BATT_MAX_VOLT - BATT_MIN_VOLT)) * 100.f) + 0.5f);
-//            batt_percent = (batt_percent < 0) ? 0 : batt_percent;
-//            batt_percent = (batt_percent > 100) ? 100 : batt_percent;
-
-//        char strBuf[32];
-//        itoa((long int)gps_heading, strBuf, 10);
-//        printStr(strBuf);
-//        printStr(crlf);
-//
-//        itoa((long int)dir_heading, strBuf, 10);
-//        printStr(strBuf);
-//        printStr(crlf);
-//
-//        itoa((long int)trunc(distance), strBuf, 10);
-//        printStr(strBuf);
-//        printStr(crlf);
-//
-//        itoa((long int)((target_coord_ptr - coords) / 2), strBuf, 10);
-//        printStr(strBuf);
-//        printStr(crlf);
+        int batt_percent = get_batt_charge();
 
         Paint_DrawTime(5, 175, hour, minute, &Font20, WHITE, BLACK);
         Paint_DrawDate(115, 175, month, day, &Font20, WHITE, BLACK);
@@ -504,6 +488,18 @@ void taskInit(void* pvParameters) {
     display_wakeup(disp);
     Paint_Clear(WHITE);
     Paint_DrawOutline();
+    Paint_DrawTime(5, 175, 0, 0, &Font20, WHITE, BLACK);
+    Paint_DrawDate(115, 175, 1, 1, &Font20, WHITE, BLACK);
+    Paint_DrawDistance(125, 20+20, (int)trunc(473));
+    Paint_DrawTemp(139, 55+15, 99);
+    Paint_DrawCompletion(125, 100, 100);
+    Paint_DrawBattery(162, 5, get_batt_charge()); //default 90, CHANGE TO ACTUAL VALUE
+    Paint_DrawLatLon(10, 125, 0, 0);
+
+    Paint_ClearWindows(10, 10, 120, 120, WHITE);
+    Paint_DrawCircle(65, 65, 55, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
+    Paint_DrawArrowd(0);
+    Paint_DrawNorth(0);
     display_draw_image(disp);
     display_sleep(disp);
 
