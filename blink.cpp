@@ -477,10 +477,10 @@ void taskInit(void* pvParameters) {
     uint8_t* Full_Image;
     display_init(disp, (io_pin_t){GPIO_PORT_P3, GPIO_PIN2}, // mosi
                  (io_pin_t){GPIO_PORT_P3, GPIO_PIN5},       // sclk
-                 (io_pin_t){GPIO_PORT_P3, GPIO_PIN6},       // cs
-                 (io_pin_t){GPIO_PORT_P6, GPIO_PIN1},       // dc
-                 (io_pin_t){GPIO_PORT_P6, GPIO_PIN2},       // rst
-                 (io_pin_t){GPIO_PORT_P4, GPIO_PIN7},       // busy
+                 (io_pin_t){GPIO_PORT_P6, GPIO_PIN1},       // cs
+                 (io_pin_t){GPIO_PORT_P4, GPIO_PIN7},       // dc
+                 (io_pin_t){GPIO_PORT_P5, GPIO_PIN1},       // rst
+                 (io_pin_t){GPIO_PORT_P2, GPIO_PIN0},       // busy
                  200,                                       // width
                  200,                                       // height
                  EPD_1IN54_PART); // mode EPD_1IN54_PART
