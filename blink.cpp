@@ -38,7 +38,8 @@ TaskHandle_t receiveHandle;
 //int32_t coords[256] = {422923200, -837135440, 422923200, -837149320, 422911760, -837159110};
 //int32_t coords[256] = {422925750, -837166570, 422916720, -837166310, 422916910, -837150770};
 int32_t num_coords = 2;
-int32_t coords[128] = {422916720, -837166310, 422925750, -837166570};
+//int32_t coords[128] = {422916720, -837166310, 422925750, -837166570};
+int32_t coords[128] = {422925360, -837163150, 422917940, -837152020};
 int32_t* target_coord_ptr = coords;
 int32_t* end_coord_ptr = coords + (num_coords * 2);
 
@@ -297,14 +298,14 @@ void taskActive(void* pvParameters) {
         Paint_DrawTime(5, 175, hour, minute, &Font20, WHITE, BLACK);
         Paint_DrawDate(115, 175, month, day, &Font20, WHITE, BLACK);
         Paint_DrawDistance(125, 20+20, (int)trunc(distance));
-        Paint_DrawTemp(140, 55+15, temp);
+        Paint_DrawTemp(139, 55+15, temp);
         //int path_completion_percent = (int)truncf((((float)(target_coord_ptr - coords) / (float)(num_coords * 2)) * 100.f) + 0.5f);
         volatile float tmp_f = (float)(target_coord_ptr - coords);
         tmp_f /= (float)(num_coords * 2);
         tmp_f *= 100;
         tmp_f += 0.5;
         volatile int path_completion_percent = (int)truncf(tmp_f);
-        Paint_DrawCompletion(155, 100, path_completion_percent);
+        Paint_DrawCompletion(125, 100, path_completion_percent);
         Paint_DrawBattery(162, 5, batt_percent); //default 90, CHANGE TO ACTUAL VALUE
         Paint_DrawLatLon(10, 125, latitude, longitude);
 
@@ -488,18 +489,18 @@ void taskInit(void* pvParameters) {
     display_wakeup(disp);
     Paint_Clear(WHITE);
     Paint_DrawOutline();
-    Paint_DrawTime(5, 175, 0, 0, &Font20, WHITE, BLACK);
-    Paint_DrawDate(115, 175, 1, 1, &Font20, WHITE, BLACK);
-    Paint_DrawDistance(125, 20+20, (int)trunc(473));
-    Paint_DrawTemp(139, 55+15, 99);
-    Paint_DrawCompletion(125, 100, 100);
+    Paint_DrawTime(5, 175, 2, 30, &Font20, WHITE, BLACK);
+    Paint_DrawDate(115, 175, 12, 5, &Font20, WHITE, BLACK);
+    Paint_DrawDistance(125, 20+20, (int)trunc(175));
+    Paint_DrawTemp(139, 55+15, 25);
+    Paint_DrawCompletion(125, 100, 50);
     Paint_DrawBattery(162, 5, get_batt_charge()); //default 90, CHANGE TO ACTUAL VALUE
-    Paint_DrawLatLon(10, 125, 0, 0);
+    Paint_DrawLatLon(10, 125, 437690000, -716909000);
 
     Paint_ClearWindows(10, 10, 120, 120, WHITE);
     Paint_DrawCircle(65, 65, 55, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
-    Paint_DrawArrowd(0);
-    Paint_DrawNorth(0);
+    Paint_DrawArrowd(315);
+    Paint_DrawNorth(60);
     display_draw_image(disp);
     display_sleep(disp);
 
@@ -553,18 +554,18 @@ void taskInit(void* pvParameters) {
 //    vTaskSuspend(activeHandle);
 
 
-//    __disable_interrupt();
-    RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
-    CS_disableClockRequest(CS_SMCLK);
-    CS_disableClockRequest(CS_MCLK);
-    CS_turnOffSMCLK();
-    Timer_A_stop(TIMER_A0_BASE);
-//    Timer_A_disableInterrupt(TIMER_A0_BASE);
-//    Timer_A_clearTimerInterrupt(TIMER_A0_BASE);
-//      taskENTER_CRITICAL();
-    __bis_SR_register( LPM3_bits + GIE);
-//    LPM3;
-    __no_operation();
+////    __disable_interrupt();
+//    RTC_start(RTC_BASE, RTC_CLOCKSOURCE_ACLK);
+//    CS_disableClockRequest(CS_SMCLK);
+//    CS_disableClockRequest(CS_MCLK);
+//    CS_turnOffSMCLK();
+//    Timer_A_stop(TIMER_A0_BASE);
+////    Timer_A_disableInterrupt(TIMER_A0_BASE);
+////    Timer_A_clearTimerInterrupt(TIMER_A0_BASE);
+////      taskENTER_CRITICAL();
+//    __bis_SR_register( LPM3_bits + GIE);
+////    LPM3;
+//    __no_operation();
 
     vTaskSuspend(NULL);
 }
